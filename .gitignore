@@ -1,16 +1,41 @@
-# Compiled class file
+### IntelliJ IDEA ###
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+.kotlin
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+
+### Spring Boot / Maven ###
+target/
+.local-data/
+build/
 *.class
-
-# Log file
-*.log
-
-# BlueJ files
 *.ctxt
-
-# Mobile Tools for Java (J2ME)
 .mtj.tmp/
-
-# Package Files #
 *.jar
 *.war
 *.nar
@@ -18,7 +43,36 @@
 *.zip
 *.tar.gz
 *.rar
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+.env
+.env.*
+!.env.example
+*.log
+logs/
+.idea/
+*.iml
+supabase/.temp/
+supabase/.branches/
+http-client.private.env.json
+
+### Local secrets and credentials ###
+/secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+### Generated implementation notes and scratch requests ###
+/docs/
+
+### Operating system and editor files ###
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+
+/supabase/
