@@ -11,7 +11,7 @@ public class PasswordValidator implements ConstraintValidator<ValidPassword, Str
     public boolean isValid(String value, ConstraintValidatorContext context) {
         // Null is allowed for optional password resets; creation also uses @NotBlank.
         return value == null || (!value.isBlank()
-                && value.codePointCount(0, value.length()) >= 12
-                && value.getBytes(StandardCharsets.UTF_8).length <= 72);
+                && value.codePointCount(0, value.length()) >= PasswordPolicy.MIN_LENGTH
+                && value.getBytes(StandardCharsets.UTF_8).length <= PasswordPolicy.MAX_UTF8_BYTES);
     }
 }

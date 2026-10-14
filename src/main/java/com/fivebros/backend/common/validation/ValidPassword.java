@@ -12,7 +12,7 @@ import jakarta.validation.Payload;
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = PasswordValidator.class)
 public @interface ValidPassword {
-    String message() default "Password must contain at least 12 characters and at most 72 UTF-8 bytes";
+    String message() default PasswordPolicy.VALIDATION_MESSAGE;
 
     Class<?>[] groups() default {};
 

@@ -36,9 +36,9 @@ public class UserAccountService {
         this.clock = clock;
     }
 
-    public PageResponse<UserResponse> list(String search, int page, int size) {
+    public PageResponse<UserResponse> list(String search, AccountStatus status, int page, int size) {
         Sort sort = Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by("id"));
-        return PageResponse.from(users.search(search.strip().toLowerCase(Locale.ROOT),
+        return PageResponse.from(users.search(search.strip().toLowerCase(Locale.ROOT), status,
                 PageRequest.of(page, size, sort)).map(UserResponse::from));
     }
 
@@ -78,10 +78,14 @@ public class UserAccountService {
         // Serialize role changes through the current admins to protect the last admin.
         users.lockUsersWithRole(Role.ADMIN);
         UserAccount actor = findUser(actorId);
-        if (!actor.getRoles().contains(Role.ADMIN)) {
+        if (!actor.isActive() || !actor.getRoles().contains(Role.ADMIN)) {
             throw new ApiException(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Administrator role is required");
         }
         UserAccount user = users.findByIdForUpdate(userId).orElseThrow(this::userNotFound);
+        if (!user.isActive()) {
+            throw new ApiException(HttpStatus.CONFLICT, "REGISTRATION_REVIEW_REQUIRED",
+                    "Roles can only be changed for active accounts; review the registration first");
+        }
         if (user.getRoles().contains(Role.ADMIN) && !roles.contains(Role.ADMIN)
                 && users.countUsersWithRole(Role.ADMIN) <= 1) {
             throw new ApiException(HttpStatus.CONFLICT, "LAST_ADMIN_REQUIRED",

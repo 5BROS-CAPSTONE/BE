@@ -1,5 +1,6 @@
 package com.fivebros.backend.security;
 
+import java.util.Arrays;
 import java.util.List;
 
 import com.fivebros.backend.config.CorsProperties;
@@ -37,8 +38,13 @@ public class SecurityConfiguration {
                 .requestCache(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(requests -> requests
-                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
-                        .anyRequest().authenticated())
+                        .requestMatchers(HttpMethod.GET, "/swagger-ui.html", "/swagger-ui/**",
+                                "/v3/api-docs", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/register").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/registration-roles").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").authenticated()
+                        .anyRequest().hasAnyRole(Arrays.stream(Role.values()).map(Role::name).toArray(String[]::new)))
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(errors)
                         .accessDeniedHandler(errors))
