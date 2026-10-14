@@ -58,17 +58,39 @@ public class UserAccountService {
     }
 
     @Transactional
-    public UserResponse update(UUID id, UpdateUserRequest request) {
+    public UserResponse update(UUID actorId, UUID id, UpdateUserRequest request) {
+        // Status and role changes share the same lock order to protect the last active admin.
+        users.lockUsersWithRole(Role.ADMIN);
+        requireAdministrator(actorId);
         UserAccount user = users.findByIdForUpdate(id).orElseThrow(this::userNotFound);
         String email = EmailAddress.normalize(request.email());
         if (users.existsByEmailAndIdNot(email, id)) {
             throw emailAlreadyExists();
         }
         user.updateProfile(email, request.fullName().strip(), clock.instant());
-        if (request.password() != null) {
-            user.changePassword(passwords.encode(request.password()), clock.instant());
-            sessions.revokeAllForUser(id, clock.instant());
+        if (request.status() != null && request.status() != user.getStatus()) {
+            if (request.status() == AccountStatus.DISABLED && user.getRoles().contains(Role.ADMIN)
+                    && users.countActiveUsersWithRole(Role.ADMIN) <= 1) {
+                throw lastAdministratorRequired();
+            }
+            if (request.status() == AccountStatus.ACTIVE && user.getRoles().isEmpty()) {
+                throw new ApiException(HttpStatus.CONFLICT, "ACCOUNT_ROLES_REQUIRED",
+                        "Assign at least one role before activating the account");
+            }
+            user.changeStatus(request.status(), clock.instant());
+            if (!user.isActive()) {
+                sessions.revokeAllForUser(id, clock.instant());
+            }
         }
+        users.flush();
+        return UserResponse.from(user);
+    }
+
+    @Transactional
+    public UserResponse resetPassword(UUID id, String password) {
+        UserAccount user = users.findByIdForUpdate(id).orElseThrow(this::userNotFound);
+        user.changePassword(passwords.encode(password), clock.instant());
+        sessions.revokeAllForUser(id, clock.instant());
         users.flush();
         return UserResponse.from(user);
     }
@@ -77,19 +99,11 @@ public class UserAccountService {
     public UserResponse assignRoles(UUID actorId, UUID userId, Set<Role> roles) {
         // Serialize role changes through the current admins to protect the last admin.
         users.lockUsersWithRole(Role.ADMIN);
-        UserAccount actor = findUser(actorId);
-        if (!actor.isActive() || !actor.getRoles().contains(Role.ADMIN)) {
-            throw new ApiException(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Administrator role is required");
-        }
+        requireAdministrator(actorId);
         UserAccount user = users.findByIdForUpdate(userId).orElseThrow(this::userNotFound);
-        if (!user.isActive()) {
-            throw new ApiException(HttpStatus.CONFLICT, "REGISTRATION_REVIEW_REQUIRED",
-                    "Roles can only be changed for active accounts; review the registration first");
-        }
-        if (user.getRoles().contains(Role.ADMIN) && !roles.contains(Role.ADMIN)
-                && users.countUsersWithRole(Role.ADMIN) <= 1) {
-            throw new ApiException(HttpStatus.CONFLICT, "LAST_ADMIN_REQUIRED",
-                    "The system must retain at least one administrator");
+        if (user.isActive() && user.getRoles().contains(Role.ADMIN) && !roles.contains(Role.ADMIN)
+                && users.countActiveUsersWithRole(Role.ADMIN) <= 1) {
+            throw lastAdministratorRequired();
         }
         user.replaceRoles(roles, clock.instant());
         users.flush();
@@ -98,6 +112,18 @@ public class UserAccountService {
 
     private UserAccount findUser(UUID id) {
         return users.findById(id).orElseThrow(this::userNotFound);
+    }
+
+    private void requireAdministrator(UUID actorId) {
+        UserAccount actor = findUser(actorId);
+        if (!actor.isActive() || !actor.getRoles().contains(Role.ADMIN)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "Administrator role is required");
+        }
+    }
+
+    private ApiException lastAdministratorRequired() {
+        return new ApiException(HttpStatus.CONFLICT, "LAST_ADMIN_REQUIRED",
+                "The system must retain at least one active administrator");
     }
 
     private ApiException userNotFound() {

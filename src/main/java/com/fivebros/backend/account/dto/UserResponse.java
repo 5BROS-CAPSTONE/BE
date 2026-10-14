@@ -14,16 +14,11 @@ public record UserResponse(
         String fullName,
         Set<Role> roles,
         AccountStatus status,
-        Role requestedRole,
-        UUID reviewedBy,
-        Instant reviewedAt,
-        String rejectionReason,
         Instant createdAt,
         Instant updatedAt
 ) {
     public static UserResponse from(UserAccount user) {
         return new UserResponse(user.getId(), user.getEmail(), user.getFullName(),
-                user.isActive() ? user.getRoles() : Set.of(), user.getStatus(), user.getRequestedRole(), user.getReviewedBy(),
-                user.getReviewedAt(), user.getRejectionReason(), user.getCreatedAt(), user.getUpdatedAt());
+                user.getRoles(), user.getStatus(), user.getCreatedAt(), user.getUpdatedAt());
     }
 }

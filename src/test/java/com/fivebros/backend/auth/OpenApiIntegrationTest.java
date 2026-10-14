@@ -1,10 +1,7 @@
 package com.fivebros.backend.auth;
 
-import java.util.Map;
-
 import com.fivebros.backend.support.ApiIntegrationTest;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -43,34 +40,50 @@ class OpenApiIntegrationTest extends ApiIntegrationTest {
                 .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.bearerFormat").value("JWT"))
                 .andExpect(jsonPath("$.security[0].bearerAuth").isEmpty())
                 .andExpect(jsonPath("$.paths['/api/v1/auth/login'].post.security").isEmpty())
-                .andExpect(jsonPath("$.paths['/api/v1/auth/register'].post.security").isEmpty())
-                .andExpect(jsonPath("$.paths['/api/v1/auth/registration-roles'].get.security").isEmpty())
+                .andExpect(jsonPath("$.paths['/api/v1/auth/register']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/v1/auth/registration-roles']").doesNotExist())
                 .andExpect(jsonPath("$.paths['/api/v1/auth/me'].get.parameters").doesNotExist())
                 .andExpect(jsonPath("$.paths['/api/v1/auth/logout'].post.parameters").doesNotExist())
-                .andExpect(jsonPath("$.paths['/api/v1/auth/register'].post.responses['201']").exists())
                 .andExpect(jsonPath("$.paths['/api/v1/auth/logout'].post.responses['204']").exists())
-                .andExpect(jsonPath("$.paths['/api/v1/users/{id}/approve'].post.parameters.length()").value(1))
+                .andExpect(jsonPath("$.paths['/api/v1/auth/password'].put.parameters").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/v1/auth/password'].put.responses['204']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/auth/password'].put.responses['400']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/auth/password'].put.responses['401']").exists())
+                .andExpect(jsonPath("$.paths['/api/v1/users/{id}/approve']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/v1/users/{id}/reject']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/v1/users/{id}/password'].put.responses['200']").exists())
                 .andExpect(jsonPath("$.paths['/error']").doesNotExist())
                 .andExpect(jsonPath("$.components.schemas.Jwt").doesNotExist());
     }
 
     @Test
-    void requestSchemasContainUsableExamplesPasswordRulesAndNonAdminRoleChoices() throws Exception {
+    void requestSchemasDescribeAdminProvisioningWithoutRegistrationOrReview() throws Exception {
         String response = mvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.components.schemas.RegisterUserRequest.properties.email.example").value("pilot@example.com"))
-                .andExpect(jsonPath("$.components.schemas.RegisterUserRequest.properties.password.minLength").value(8))
+                .andExpect(jsonPath("$.components.schemas.CreateUserRequest.properties.email.example").value("manager@example.com"))
                 .andExpect(jsonPath("$.components.schemas.CreateUserRequest.properties.password.minLength").value(8))
-                .andExpect(jsonPath("$.components.schemas.UpdateUserRequest.properties.password.minLength").value(8))
-                .andExpect(jsonPath("$.components.schemas.RegisterUserRequest.properties.password.writeOnly").value(true))
+                .andExpect(jsonPath("$.components.schemas.ResetPasswordRequest.properties.password.minLength").value(8))
+                .andExpect(jsonPath("$.components.schemas.UpdateUserRequest.properties.password").doesNotExist())
+                .andExpect(jsonPath("$.components.schemas.CreateUserRequest.properties.password.writeOnly").value(true))
+                .andExpect(jsonPath("$.components.schemas.ResetPasswordRequest.properties.password.writeOnly").value(true))
+                .andExpect(jsonPath("$.components.schemas.ChangePasswordRequest.properties.currentPassword.writeOnly").value(true))
+                .andExpect(jsonPath("$.components.schemas.ChangePasswordRequest.properties.newPassword.writeOnly").value(true))
+                .andExpect(jsonPath("$.components.schemas.ChangePasswordRequest.properties.newPassword.minLength").value(8))
+                .andExpect(jsonPath("$.components.schemas.ChangePasswordRequest.properties.newPassword.maxLength").value(72))
+                .andExpect(jsonPath("$.components.schemas.ChangePasswordRequest.properties.id").doesNotExist())
+                .andExpect(jsonPath("$.components.schemas.ChangePasswordRequest.properties.email").doesNotExist())
+                .andExpect(jsonPath("$.components.schemas.RegisterUserRequest").doesNotExist())
+                .andExpect(jsonPath("$.components.schemas.ApproveRegistrationRequest").doesNotExist())
+                .andExpect(jsonPath("$.components.schemas.RejectRegistrationRequest").doesNotExist())
+                .andExpect(jsonPath("$.components.schemas.UserResponse.properties.requestedRole").doesNotExist())
+                .andExpect(jsonPath("$.components.schemas.UserResponse.properties.reviewedBy").doesNotExist())
                 .andReturn().getResponse().getContentAsString();
         var schemas = read(response).get("components").get("schemas");
-        var registrationRoles = schemas.get("RegisterUserRequest").get("properties").get("requestedRole").get("enum");
-        assertThat(registrationRoles.size()).isEqualTo(5);
-        assertThat(registrationRoles.toString()).contains("OPERATOR").doesNotContain("ADMIN");
-        var approvedRoles = schemas.get("ApproveRegistrationRequest").get("properties").get("roles").get("items").get("enum");
-        assertThat(approvedRoles.size()).isEqualTo(5);
-        assertThat(approvedRoles.toString()).doesNotContain("ADMIN");
+        var roles = schemas.get("CreateUserRequest").get("properties").get("roles").get("items").get("enum");
+        assertThat(roles.size()).isEqualTo(6);
+        assertThat(roles.toString()).contains("ADMIN", "OPERATOR");
+        var statuses = schemas.get("UserResponse").get("properties").get("status").get("enum");
+        assertThat(statuses.toString()).contains("ACTIVE", "DISABLED").doesNotContain("PENDING", "REJECTED");
     }
 
     @Test
@@ -78,11 +91,7 @@ class OpenApiIntegrationTest extends ApiIntegrationTest {
         mvc.perform(get("/v3/api-docs")).andExpect(status().isOk());
         mvc.perform(get("/api/v1/users")).andExpect(status().isUnauthorized());
         mvc.perform(post("/v3/api-docs")).andExpect(status().isUnauthorized());
-        mvc.perform(post("/api/v1/auth/register").contentType(MediaType.APPLICATION_JSON)
-                        .content(body(Map.of("email", "pending-docs@example.test", "fullName", "Pending User",
-                                "password", PASSWORD, "requestedRole", "OPERATOR"))))
-                .andExpect(status().isCreated());
-        String token = login("pending-docs@example.test", PASSWORD);
+        String token = login(operator);
         mvc.perform(get("/v3/api-docs").header("Authorization", bearer(token))).andExpect(status().isOk());
         mvc.perform(get("/api/v1/auth/me").header("Authorization", bearer(token))).andExpect(status().isOk());
         mvc.perform(get("/api/v1/users").header("Authorization", bearer(token))).andExpect(status().isForbidden());

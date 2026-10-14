@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
         info = @Info(title = "5BROS Backend API", version = "v1",
                 description = "API quản lý tài khoản và hỗ trợ vận hành drone. "
                         + "Đăng nhập để lấy accessToken, sau đó dán token vào Authorize. "
-                        + "Tài khoản PENDING chỉ xem hồ sơ và đăng xuất; Admin duyệt để cấp role chính thức."),
+                        + "Hệ thống nội bộ: Admin tạo tài khoản kèm mật khẩu và role, rồi cung cấp thông tin đăng nhập."),
         security = @SecurityRequirement(name = "bearerAuth")
 )
 @SecurityScheme(name = "bearerAuth", type = SecuritySchemeType.HTTP, scheme = "bearer", bearerFormat = "JWT",

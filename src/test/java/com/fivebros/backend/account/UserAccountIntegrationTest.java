@@ -73,6 +73,10 @@ class UserAccountIntegrationTest extends ApiIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(Map.of("email", admin.getEmail(), "fullName", "Changed"))))
                 .andExpect(status().isForbidden());
+        mvc.perform(put("/api/v1/users/" + admin.getId() + "/password")
+                        .header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON)
+                        .content(body(Map.of("password", "Abcd123!"))))
+                .andExpect(status().isForbidden());
         mvc.perform(put("/api/v1/users/" + user.getId() + "/roles").header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON).content(body(Map.of("roles", Set.of("ADMIN")))))
                 .andExpect(status().isForbidden());
@@ -129,11 +133,14 @@ class UserAccountIntegrationTest extends ApiIntegrationTest {
         String oldSession = login(operator);
         String anotherOldSession = login(operator);
         String newPassword = "FiveBros-New-Password!";
-        mvc.perform(put("/api/v1/users/" + operator.getId()).header("Authorization", bearer(adminToken))
+        mvc.perform(put("/api/v1/users/" + operator.getId() + "/password")
+                        .header("Authorization", bearer(adminToken))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(Map.of("email", operator.getEmail(), "fullName", "Operator",
-                                "password", newPassword))))
-                .andExpect(status().isOk());
+                        .content(body(Map.of("password", newPassword))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(operator.getId().toString()))
+                .andExpect(jsonPath("$.email").value(operator.getEmail()))
+                .andExpect(jsonPath("$.fullName").value(operator.getFullName()));
         for (String token : new String[]{oldSession, anotherOldSession}) {
             mvc.perform(get("/api/v1/auth/me").header("Authorization", bearer(token)))
                     .andExpect(status().isUnauthorized());

@@ -2,7 +2,7 @@
 
 Backend của **Drone Mission Management & Decision Support System**.
 Đợt triển khai đầu tiên gồm AUTH-01, AUTH-02 và AUTH-03 theo bản phân tích hiện tại,
-kèm luồng tự đăng ký và Admin duyệt tài khoản đã thống nhất bổ sung.
+theo mô hình nội bộ: Admin tạo tài khoản và cấp role trực tiếp.
 
 ## Công nghệ
 
@@ -44,16 +44,15 @@ Các module nghiệp vụ tiếp theo có thể thêm package riêng như `fleet
 
 | Mã | Chức năng |
 |---|---|
-| AUTH-01 | Đăng nhập bằng email/mật khẩu, JWT có thời hạn, đăng xuất thu hồi phiên hiện tại, xem hồ sơ bản thân; tài khoản chờ duyệt chưa có quyền nghiệp vụ |
+| AUTH-01 | Đăng nhập bằng email/mật khẩu, JWT có thời hạn, đăng xuất thu hồi phiên hiện tại, xem hồ sơ và tự đổi mật khẩu |
 | AUTH-02 | Admin tạo, xem, tìm kiếm, phân trang và sửa tài khoản; có thể đặt lại mật khẩu |
 | AUTH-03 | Sáu role cố định, gán/thay thế role, kiểm tra quyền trên API |
-| Đăng ký & duyệt | Người dùng tự đăng ký với role mong muốn; Admin xem hàng chờ, duyệt và cấp role chính thức hoặc từ chối với lý do |
 
 Role cố định: `ADMIN`, `MANAGER`, `EXPERT`, `OPERATOR`, `TECHNICIAN`, `ANALYST`.
 Một tài khoản có thể có nhiều role; đây là lựa chọn triển khai cho RBAC hiện tại.
 
 Trong phạm vi ba chức năng này, Admin có `user:read`, `user:create`, `user:update`,
-`user:assign-roles`, `user:review`. Mọi người dùng đã đăng nhập được xem hồ sơ bản thân và đăng xuất.
+`user:assign-roles`. Mọi người dùng đang hoạt động đã đăng nhập được xem hồ sơ bản thân, tự đổi mật khẩu và đăng xuất.
 Permission cho các module nhiệm vụ, drone, pin và DSS sẽ được bổ sung khi triển khai các module đó.
 
 ## Chạy dự án đã cấu hình trên máy hiện tại
@@ -138,7 +137,7 @@ Nếu profile local không có khóa JWT được cấu hình, ứng dụng sinh
 
 ## API
 
-Đăng ký, đăng nhập và danh sách role có thể yêu cầu khi đăng ký là API công khai.
+Đăng nhập là API xác thực công khai. Tài khoản nội bộ do Admin tạo và cấp role.
 Các request còn lại cần header `Authorization: Bearer <accessToken>`.
 
 ### Thử API bằng Swagger UI
@@ -159,10 +158,8 @@ Nếu đổi `SERVER_PORT`, thay cổng trong các URL tương ứng.
 5. Khi đổi người dùng, đăng xuất token cũ trong **Authorize** rồi dán token mới.
    JWT không được lưu qua lần tải lại trang Swagger.
 
-Đăng ký, đăng nhập và danh sách role khi đăng ký có thể thử mà không cần **Authorize**.
-Để thử duyệt tài khoản, đăng ký với email mới, dùng JWT Admin gọi
-`GET /api/v1/users?status=PENDING`, rồi `POST /api/v1/users/{id}/approve` hoặc `/reject`.
-JWT của người dùng PENDING chỉ được xem hồ sơ và đăng xuất, chưa gọi được API nghiệp vụ.
+Admin dùng `POST /api/v1/users` để tạo tài khoản kèm mật khẩu và role, rồi cung cấp
+thông tin đăng nhập cho người dùng. Tài khoản được tạo ở trạng thái `ACTIVE`, dùng được ngay.
 Sau logout, token cũ sẽ bị từ chối ở API cần xác thực; xóa token đó khỏi **Authorize**
 hoặc đăng nhập để lấy token mới.
 
@@ -172,67 +169,69 @@ Swagger mô tả API và gửi request thật; việc kiểm tra quyền vẫn d
 | Method | Endpoint | Quyền |
 |---|---|---|
 | POST | `/api/v1/auth/login` | Công khai |
-| POST | `/api/v1/auth/register` | Công khai |
-| GET | `/api/v1/auth/registration-roles` | Công khai; chỉ trả năm role nghiệp vụ, không có ADMIN |
 | POST | `/api/v1/auth/logout` | Đã đăng nhập |
 | GET | `/api/v1/auth/me` | Đã đăng nhập |
-| GET | `/api/v1/users?search=&status=PENDING&page=0&size=20` | Admin; `status` tùy chọn |
+| PUT | `/api/v1/auth/password` | Đã đăng nhập; tự đổi mật khẩu |
+| GET | `/api/v1/users?search=&status=ACTIVE&page=0&size=20` | Admin; `status` tùy chọn |
 | GET | `/api/v1/users/{id}` | Admin |
 | POST | `/api/v1/users` | Admin |
-| PUT | `/api/v1/users/{id}` | Admin |
+| PUT | `/api/v1/users/{id}` | Admin; sửa hồ sơ/trạng thái |
+| PUT | `/api/v1/users/{id}/password` | Admin; đặt lại mật khẩu |
 | PUT | `/api/v1/users/{id}/roles` | Admin |
-| POST | `/api/v1/users/{id}/approve` | Admin |
-| POST | `/api/v1/users/{id}/reject` | Admin |
 | GET | `/api/v1/roles` | Admin |
 
-`PUT /users/{id}` cập nhật email và fullName. Trường `password` là tùy chọn;
-bỏ trường này hoặc gửi `null` để giữ mật khẩu hiện tại. Đặt lại mật khẩu thu hồi mọi
-phiên của tài khoản. `PUT /users/{id}/roles` thay thế toàn bộ tập role và cần ít nhất một role.
-Không thể bỏ role Admin của Admin cuối cùng.
+`PUT /users/{id}` cập nhật email, fullName và trường `status` tùy chọn. Bỏ `status` để giữ
+trạng thái hiện tại. `PUT /users/{id}/password` chỉ nhận `password`, mã hóa trước khi lưu
+và thu hồi mọi phiên của tài khoản. `PUT /users/{id}/roles` thay thế toàn bộ tập role,
+cần ít nhất một role. Không thể bỏ role Admin hoặc khóa Admin đang hoạt động cuối cùng.
 
-### Tự đăng ký và duyệt tài khoản
+### Người dùng tự đổi mật khẩu
 
-1. Người dùng lấy các lựa chọn ở `GET /auth/registration-roles`, điền email, fullName,
-   password và một `requestedRole`, rồi gửi `POST /auth/register`.
-2. BE tạo tài khoản `PENDING`, mã hóa mật khẩu bằng BCrypt và lưu role mong muốn riêng.
-   Tập `roles` chính thức rỗng; response HTTP 201 không cấp JWT hay phiên đăng nhập.
-3. Admin xem `GET /users?status=PENDING`, mở chi tiết tài khoản và quyết định:
-   - `POST /users/{id}/approve` với `roles` không rỗng: cấp role chính thức, chuyển thành `ACTIVE`.
-     Role được cấp có thể khác role mong muốn và có thể gồm nhiều role nghiệp vụ.
-   - `POST /users/{id}/reject` với `reason` bắt buộc, tối đa 500 ký tự: chuyển thành `REJECTED`.
-4. Tài khoản `PENDING` vẫn đăng nhập được và nhận JWT; response có `user.status=PENDING`
-   và `user.roles=[]` để giao diện hiển thị trạng thái chờ duyệt. Phiên này chỉ được xem hồ sơ
-   qua `GET /auth/me` và đăng xuất; API nghiệp vụ trả HTTP 403.
-5. Khi Admin duyệt, tài khoản chuyển thành `ACTIVE` và quyền có hiệu lực trên JWT đã cấp
-   ở request tiếp theo; người dùng không cần đăng nhập lại. Khi bị từ chối, mọi phiên bị thu hồi
-   và đăng nhập trả HTTP 403 `ACCOUNT_REJECTED` nếu mật khẩu đúng.
-   Mật khẩu sai vẫn trả HTTP 401 `INVALID_CREDENTIALS` ở mọi trạng thái.
+Mọi role, bao gồm Admin, được gọi `PUT /api/v1/auth/password` với JWT của chính mình:
 
-Không được yêu cầu `ADMIN` khi tự đăng ký hoặc cấp `ADMIN` qua endpoint duyệt.
-Các trường client gửi thêm như `roles`, `status` hoặc `reviewedBy` không cấp quyền.
-Admin phải dùng endpoint duyệt; `PUT /users/{id}/roles` chỉ nhận tài khoản `ACTIVE`.
-Mỗi đăng ký chỉ được quyết định một lần, kể cả khi có hai yêu cầu đồng thời.
-BE lưu `reviewedBy`, `reviewedAt` và lý do từ chối để truy vết quyết định.
-Trạng thái `REJECTED` là quyết định cuối cùng của luồng này; email vẫn được giữ và không thể
-đăng ký lại để ghi đè hồ sơ. Luồng gửi email thông báo và xác minh email chưa được triển khai.
+```json
+{
+  "currentPassword": "Your-Current-Password!",
+  "newPassword": "Your-New-Password!"
+}
+```
 
-Ví dụ đăng ký:
+BE xác định tài khoản từ JWT, không nhận ID/email của tài khoản khác. Mật khẩu hiện tại
+phải đúng; mật khẩu mới có ít nhất 8 ký tự và tối đa 72 byte UTF-8. Thành công trả HTTP 204,
+mật khẩu được lưu bằng BCrypt và mọi phiên của tài khoản bị thu hồi, kể cả phiên đang dùng.
+Đăng nhập lại bằng mật khẩu mới rồi cập nhật token trong Swagger **Authorize**.
+Mật khẩu hiện tại sai trả HTTP 400 `CURRENT_PASSWORD_INCORRECT`; mật khẩu và phiên được giữ nguyên.
+Nếu quên mật khẩu, nhờ Admin đặt lại qua `PUT /api/v1/users/{id}/password`.
+
+### Admin cung cấp tài khoản nội bộ
+
+1. Admin đăng nhập và xem các role tại `GET /api/v1/roles`.
+2. Admin tạo tài khoản bằng `POST /api/v1/users`, nhập email, fullName, password và roles.
+3. BE lưu mật khẩu bằng BCrypt và cấp role ngay. Response không chứa mật khẩu hay password hash.
+4. Admin cung cấp email/mật khẩu cho người dùng qua kênh của nhóm. BE chưa có chức năng tự gửi thông tin này.
+5. Người dùng đăng nhập bằng thông tin được cung cấp. Không có bước tự đăng ký hoặc duyệt tài khoản.
+
+Ví dụ Admin tạo tài khoản:
 
 ```json
 {
   "email": "operator@example.test",
   "fullName": "Drone Operator",
   "password": "Your-Own-Strong-Password!",
-  "requestedRole": "OPERATOR"
+  "roles": ["OPERATOR"]
 }
 ```
 
-Body duyệt: `{"roles":["OPERATOR"]}`. Body từ chối: `{"reason":"Không xác minh được thông tin"}`.
+`ACTIVE` cho phép đăng nhập; `DISABLED` khóa đăng nhập và thu hồi các phiên hiện có.
+Đăng nhập tài khoản bị khóa với mật khẩu đúng trả HTTP 403 `ACCOUNT_DISABLED`; mật khẩu
+sai vẫn trả HTTP 401 `INVALID_CREDENTIALS`. Đặt lại mật khẩu hoặc gán role không tự kích hoạt tài khoản.
+Admin có thể gán role, đặt lại mật khẩu rồi gọi API sửa tài khoản với `status=ACTIVE`.
+Tài khoản chưa có role không thể kích hoạt.
 
-Migration mới giữ tài khoản cũ ở trạng thái `ACTIVE`, giữ nguyên mật khẩu, role và phiên đăng nhập.
-Admin bootstrap và tài khoản được Admin tạo trực tiếp qua `POST /users` cũng là `ACTIVE`.
-Migration H2 chuyển bảng bằng cách tạo bảng đích, sao chép dữ liệu và tạo lại đầy đủ ràng buộc;
-H2 không hỗ trợ `ALTER TABLE ... SET SCHEMA` như PostgreSQL.
+Migration `internal_accounts_only` giữ nguyên dữ liệu và lịch sử Flyway. Tài khoản cũ
+`PENDING`/`REJECTED` chuyển thành `DISABLED` và các phiên của chúng bị thu hồi. Tài khoản
+`ACTIVE` giữ nguyên mật khẩu, role và phiên. Các cột thông tin đăng ký/duyệt cũ được giữ
+trong DB để bảo toàn lịch sử, nhưng không còn được đọc/ghi hay trả ra API.
 
 JWT mặc định sống 30 phút. Đổi bằng `AUTH_TOKEN_TTL`, ví dụ `PT1H`.
 Mỗi request kiểm tra phiên và lấy quyền hiện tại từ database, nên logout và đổi role
@@ -257,34 +256,22 @@ accessToken sau login và userId sau tạo tài khoản để dùng trong các r
 java -jar target/backend-0.0.1-SNAPSHOT.jar
 ```
 
-Bộ 53 test mặc định dùng H2 trong bộ nhớ, tắt việc đọc `.env`, không kết nối hoặc xóa dữ liệu
-Supabase. Các kiểm tra bao gồm quyền của cả sáu role, tạo/sửa tài khoản, email trùng,
-validation, JWT sai/hết hạn, thu hồi phiên, đổi quyền trên JWT đã cấp, reset mật khẩu
-và bảo vệ Admin cuối cùng khi có hai yêu cầu đổi role đồng thời.
+Các test mặc định dùng H2 trong bộ nhớ và tắt việc đọc `.env`. Kiểm tra gồm quyền của
+cả sáu role, Admin tạo tài khoản kèm role để đăng nhập ngay, chặn các route đăng ký/duyệt
+đã gỡ, email trùng, validation mật khẩu 8 ký tự và giới hạn 72 byte UTF-8, JWT sai/hết hạn,
+logout/tự đổi mật khẩu/reset mật khẩu/khóa tài khoản thu hồi phiên, đổi role trên JWT đã cấp, và bảo vệ
+Admin đang hoạt động cuối cùng khi có hai yêu cầu đồng thời.
 
-Các test đăng ký kiểm tra cả năm role nghiệp vụ, validation, email trùng, bảo vệ trước
-client gửi quyền/trạng thái giả, hàng chờ có phân trang, cho phép tài khoản chờ duyệt đăng nhập
-và xem hồ sơ/đăng xuất nhưng chặn API nghiệp vụ, quyền được cập nhật trên phiên đang dùng
-sau khi duyệt, duyệt với role khác đề nghị, từ chối và thu hồi mọi phiên, bảo vệ API duyệt ở tất cả role khác Admin,
-chặn gán role để bỏ qua duyệt, và chỉ lưu một quyết định khi duyệt/từ chối đồng thời.
-Test migration nâng cấp từ schema cũ kiểm tra dữ liệu tài khoản, role, phiên còn nguyên,
-trạng thái mặc định, ràng buộc role/trạng thái và khả năng chạy lại Flyway không áp dụng trùng.
+Test migration nâng cấp từ schema cũ giữ tài khoản, role, mật khẩu và dữ liệu duyệt cũ,
+chuyển tài khoản chưa được cấp phép sang DISABLED, thu hồi đúng các phiên của chúng và
+kiểm tra Flyway có thể validate/chạy lại mà không áp dụng migration trùng.
+Các test Swagger kiểm tra UI, JSON/YAML, JWT Bearer, schema tạo tài khoản/role/mật khẩu,
+và việc gỡ toàn bộ endpoint/schema đăng ký hoặc duyệt.
 
-Trước khi bổ sung luồng tự đăng ký, đã kiểm tra JAR kết nối Supabase CAPSTONE, chạy migration, khởi tạo Admin, login,
-xem/sửa tài khoản, cập nhật role và logout. JWT đã logout bị từ chối với HTTP 401.
-
-Các test Swagger kiểm tra HTML, CSS, JavaScript và cấu hình UI; tài liệu JSON/YAML;
-JWT Bearer và API công khai; ẩn tham số JWT nội bộ; ví dụ/validation/role trong schema;
-đồng thời xác nhận tài liệu công khai không bỏ qua phân quyền API.
-
-Các test mật khẩu kiểm tra 8 ký tự được chấp nhận, 7 ký tự bị từ chối ở đăng ký/tạo tài khoản/reset,
-đồng bộ schema Swagger và ranh giới ký tự Unicode/72 byte UTF-8.
-
-Có thể chạy lại 52 test API trên PostgreSQL bằng các tham số dưới đây; test nâng cấp H2
-vẫn chạy riêng trong cùng bộ test. Dùng database kiểm thử riêng: các test xóa tài khoản,
-role và phiên trong database được truyền vào trước mỗi case. Database cần được thiết lập
-role `fivebros_backend` theo bước cấu hình ở trên; tài khoản chạy migration cần quyền DDL,
-tài khoản JDBC của BE cần quyền đọc/ghi các bảng auth và được RLS cho phép.
+Có thể chạy các test API trên PostgreSQL bằng các tham số dưới đây; test nâng cấp H2
+vẫn chạy riêng. Dùng database kiểm thử riêng vì các test xóa tài khoản và phiên trước
+mỗi case. Database cần role `fivebros_backend`; tài khoản migration cần quyền DDL,
+tài khoản JDBC cần quyền đọc/ghi các bảng auth và được RLS cho phép.
 
 ```powershell
 .\mvnw.cmd test `
@@ -295,7 +282,3 @@ tài khoản JDBC của BE cần quyền đọc/ghi các bảng auth và đượ
   "-Dspring.flyway.user=$env:FIVEBROS_TEST_MIGRATION_USERNAME" `
   "-Dspring.flyway.password=$env:FIVEBROS_TEST_MIGRATION_PASSWORD"
 ```
-
-Luồng đăng ký/duyệt đã được kiểm tra trên H2 và PostgreSQL 17.11 local, bao gồm HTTP thật
-qua JAR, nâng cấp schema cũ và quyền truy cập bằng role `fivebros_backend` dưới RLS.
-Migration đăng ký chưa được áp dụng trực tiếp lên Supabase CAPSTONE trong đợt kiểm thử này.

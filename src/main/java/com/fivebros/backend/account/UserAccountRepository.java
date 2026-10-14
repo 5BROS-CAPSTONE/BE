@@ -49,4 +49,11 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
 
     @Query("select count(user) from UserAccount user where :role member of user.roles")
     long countUsersWithRole(@Param("role") Role role);
+
+    @Query("""
+            select count(user) from UserAccount user
+            where user.status = com.fivebros.backend.account.AccountStatus.ACTIVE
+              and :role member of user.roles
+            """)
+    long countActiveUsersWithRole(@Param("role") Role role);
 }

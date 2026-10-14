@@ -4,9 +4,8 @@ import java.net.URI;
 import java.util.UUID;
 
 import com.fivebros.backend.account.dto.AssignRolesRequest;
-import com.fivebros.backend.account.dto.ApproveRegistrationRequest;
-import com.fivebros.backend.account.dto.RejectRegistrationRequest;
 import com.fivebros.backend.account.dto.CreateUserRequest;
+import com.fivebros.backend.account.dto.ResetPasswordRequest;
 import com.fivebros.backend.account.dto.UpdateUserRequest;
 import com.fivebros.backend.account.dto.UserResponse;
 import com.fivebros.backend.common.PageResponse;
@@ -34,20 +33,18 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RestController
 @RequestMapping("/api/v1/users")
-@Tag(name = "Users", description = "Admin quản lý tài khoản và duyệt đăng ký")
+@Tag(name = "Users", description = "Admin tạo tài khoản nội bộ, cung cấp mật khẩu và cấp role")
 public class UserAccountController {
 
     private final UserAccountService users;
-    private final RegistrationService registrations;
 
-    public UserAccountController(UserAccountService users, RegistrationService registrations) {
+    public UserAccountController(UserAccountService users) {
         this.users = users;
-        this.registrations = registrations;
     }
 
     @GetMapping
     @Operation(summary = "Tìm kiếm, lọc trạng thái và phân trang tài khoản",
-            description = "Admin. Đặt status=PENDING để xem hàng chờ duyệt; bỏ status để xem mọi trạng thái.")
+            description = "Admin. Tìm theo email hoặc họ tên; lọc trạng thái tài khoản nếu cần.")
     @PreAuthorize("hasAuthority('user:read')")
     public PageResponse<UserResponse> list(
             @RequestParam(defaultValue = "") @Size(max = 120) String search,
@@ -66,7 +63,8 @@ public class UserAccountController {
 
     @PostMapping
     @Operation(summary = "Admin tạo tài khoản trực tiếp",
-            description = "Tài khoản được tạo trực tiếp ở trạng thái ACTIVE với các role được Admin cấp.")
+            description = "Admin nhập email, họ tên, mật khẩu và ít nhất một role. Tài khoản dùng được ngay; "
+                    + "Admin cung cấp thông tin đăng nhập cho người dùng.")
     @ApiResponse(responseCode = "201", description = "Đã tạo tài khoản ACTIVE")
     @PreAuthorize("hasAuthority('user:create')")
     public ResponseEntity<UserResponse> create(@Valid @RequestBody CreateUserRequest request) {
@@ -75,39 +73,32 @@ public class UserAccountController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Sửa thông tin hoặc đặt lại mật khẩu",
-            description = "Admin. Bỏ password hoặc gửi null để giữ mật khẩu hiện tại. "
-                    + "Nếu đặt lại mật khẩu, mọi phiên đăng nhập của tài khoản bị thu hồi.")
+    @Operation(summary = "Sửa thông tin và trạng thái tài khoản",
+            description = "Admin. Cập nhật email và họ tên; status là tùy chọn. "
+                    + "DISABLED khóa đăng nhập và thu hồi mọi phiên. ACTIVE cần có role. Không thể khóa Admin cuối cùng.")
     @PreAuthorize("hasAuthority('user:update')")
-    public UserResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateUserRequest request) {
-        return users.update(id, request);
+    public UserResponse update(@PathVariable UUID id, @Valid @RequestBody UpdateUserRequest request,
+                               @AuthenticationPrincipal Jwt jwt) {
+        return users.update(UUID.fromString(jwt.getSubject()), id, request);
+    }
+
+    @PutMapping("/{id}/password")
+    @Operation(summary = "Đặt lại mật khẩu tài khoản",
+            description = "Admin. Tài khoản được xác định bằng id; email và họ tên trong phản hồi được lấy từ DB. "
+                    + "Mọi phiên đăng nhập hiện tại của tài khoản sẽ bị thu hồi.")
+    @ApiResponse(responseCode = "200", description = "Đã đặt lại mật khẩu")
+    @PreAuthorize("hasAuthority('user:update')")
+    public UserResponse resetPassword(@PathVariable UUID id, @Valid @RequestBody ResetPasswordRequest request) {
+        return users.resetPassword(id, request.password());
     }
 
     @PutMapping("/{id}/roles")
-    @Operation(summary = "Thay thế role chính thức của tài khoản ACTIVE",
-            description = "Admin. Không dùng để bỏ qua duyệt tài khoản PENDING. Không thể bỏ Admin cuối cùng.")
+    @Operation(summary = "Thay thế role của tài khoản",
+            description = "Admin. Thay thế toàn bộ tập role bằng ít nhất một role. Không thể bỏ Admin cuối cùng.")
     @PreAuthorize("hasAuthority('user:assign-roles')")
     public UserResponse assignRoles(@PathVariable UUID id, @Valid @RequestBody AssignRolesRequest request,
                                     @AuthenticationPrincipal Jwt jwt) {
         return users.assignRoles(UUID.fromString(jwt.getSubject()), id, request.roles());
     }
 
-    @PostMapping("/{id}/approve")
-    @Operation(summary = "Duyệt đăng ký và cấp role chính thức",
-            description = "Admin. Chỉ nhận PENDING, ít nhất một role nghiệp vụ và không có ADMIN. "
-                    + "Có thể cấp role khác requestedRole. Quyền có hiệu lực ngay trên phiên đang dùng.")
-    @PreAuthorize("hasAuthority('user:review')")
-    public UserResponse approve(@PathVariable UUID id, @Valid @RequestBody ApproveRegistrationRequest request,
-                                @AuthenticationPrincipal Jwt jwt) {
-        return registrations.approve(UUID.fromString(jwt.getSubject()), id, request.roles());
-    }
-
-    @PostMapping("/{id}/reject")
-    @Operation(summary = "Từ chối đăng ký với lý do",
-            description = "Admin. Chỉ nhận PENDING. Tài khoản chuyển thành REJECTED và mọi phiên bị thu hồi.")
-    @PreAuthorize("hasAuthority('user:review')")
-    public UserResponse reject(@PathVariable UUID id, @Valid @RequestBody RejectRegistrationRequest request,
-                               @AuthenticationPrincipal Jwt jwt) {
-        return registrations.reject(UUID.fromString(jwt.getSubject()), id, request.reason());
-    }
 }
