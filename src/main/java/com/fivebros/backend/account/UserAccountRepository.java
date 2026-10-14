@@ -27,11 +27,13 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
 
     @Query("""
             select user from UserAccount user
-            where :search = ''
-               or lower(user.email) like concat('%', :search, '%')
-               or lower(user.fullName) like concat('%', :search, '%')
+            where (:status is null or user.status = :status)
+              and (:search = ''
+                   or lower(user.email) like concat('%', :search, '%')
+                   or lower(user.fullName) like concat('%', :search, '%'))
             """)
-    Page<UserAccount> search(@Param("search") String search, Pageable pageable);
+    Page<UserAccount> search(@Param("search") String search, @Param("status") AccountStatus status,
+                             Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select user from UserAccount user where user.id = :id")

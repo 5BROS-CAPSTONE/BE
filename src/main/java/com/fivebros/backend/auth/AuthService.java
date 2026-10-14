@@ -5,14 +5,18 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.fivebros.backend.account.AccountStatus;
 import com.fivebros.backend.account.EmailAddress;
 import com.fivebros.backend.account.UserAccount;
 import com.fivebros.backend.account.UserAccountRepository;
 import com.fivebros.backend.account.dto.UserResponse;
 import com.fivebros.backend.auth.dto.LoginRequest;
 import com.fivebros.backend.auth.dto.LoginResponse;
+import com.fivebros.backend.common.error.ApiException;
+import com.fivebros.backend.common.validation.PasswordPolicy;
 import com.fivebros.backend.config.JwtProperties;
 import com.fivebros.backend.security.AccountPrincipal;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -42,7 +46,7 @@ public class AuthService {
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
-        if (request.password().getBytes(StandardCharsets.UTF_8).length > 72) {
+        if (request.password().getBytes(StandardCharsets.UTF_8).length > PasswordPolicy.MAX_UTF8_BYTES) {
             throw new BadCredentialsException("Invalid credentials");
         }
         var authentication = authenticationManager.authenticate(
@@ -54,6 +58,9 @@ public class AuthService {
         // A concurrent admin password reset must not be followed by a session for the old password.
         if (!principal.passwordHash().equals(user.getPasswordHash())) {
             throw new BadCredentialsException("Invalid credentials");
+        }
+        if (user.getStatus() == AccountStatus.REJECTED) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "ACCOUNT_REJECTED", "The registration was rejected");
         }
         Instant now = clock.instant();
         AuthSession session = sessions.save(new AuthSession(user, now, now.plus(properties.tokenTtl())));

@@ -1,12 +1,15 @@
 package com.fivebros.backend.auth.dto;
 
+import com.fivebros.backend.common.validation.PasswordPolicy;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record LoginRequest(
-        @NotBlank @Email @Size(max = 254) String email,
-        @NotBlank @Size(max = 72) String password
+        @Schema(example = "admin@5bros.local") @NotBlank @Email @Size(max = 254) String email,
+        @Schema(format = "password", accessMode = Schema.AccessMode.WRITE_ONLY,
+                example = "Your-Own-Strong-Password!") @NotBlank @Size(max = PasswordPolicy.MAX_UTF8_BYTES) String password
 ) {
     @Override
     public String toString() {

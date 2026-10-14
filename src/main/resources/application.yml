@@ -30,6 +30,18 @@ server:
     include-message: never
     include-stacktrace: never
 
+springdoc:
+  paths-to-match: /api/v1/**
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:true}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:true}
+    path: /swagger-ui.html
+    disable-swagger-default-url: true
+    tags-sorter: alpha
+    operations-sorter: method
+    persist-authorization: false
+
 app:
   auth:
     issuer: fivebros-backend

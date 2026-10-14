@@ -42,6 +42,21 @@ public class UserAccount {
     @BatchSize(size = 50)
     private Set<Role> roles = new HashSet<>();
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private AccountStatus status = AccountStatus.ACTIVE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private Role requestedRole;
+
+    private UUID reviewedBy;
+
+    private Instant reviewedAt;
+
+    @Column(length = 500)
+    private String rejectionReason;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -68,6 +83,34 @@ public class UserAccount {
         this.email = email;
         this.fullName = fullName;
         this.updatedAt = now;
+    }
+
+    public static UserAccount pendingRegistration(String email, String fullName, String passwordHash,
+                                                   Role requestedRole, Instant now) {
+        UserAccount user = new UserAccount(email, fullName, passwordHash, Set.of(), now);
+        user.status = AccountStatus.PENDING;
+        user.requestedRole = requestedRole;
+        return user;
+    }
+
+    public void approveRegistration(Set<Role> roles, UUID reviewerId, Instant now) {
+        replaceRoles(roles, now);
+        status = AccountStatus.ACTIVE;
+        reviewedBy = reviewerId;
+        reviewedAt = now;
+    }
+
+    public void rejectRegistration(String reason, UUID reviewerId, Instant now) {
+        roles.clear();
+        status = AccountStatus.REJECTED;
+        rejectionReason = reason;
+        reviewedBy = reviewerId;
+        reviewedAt = now;
+        updatedAt = now;
+    }
+
+    public boolean isActive() {
+        return status == AccountStatus.ACTIVE;
     }
 
     public void changePassword(String passwordHash, Instant now) {
@@ -99,6 +142,26 @@ public class UserAccount {
 
     public Set<Role> getRoles() {
         return Set.copyOf(roles);
+    }
+
+    public AccountStatus getStatus() {
+        return status;
+    }
+
+    public Role getRequestedRole() {
+        return requestedRole;
+    }
+
+    public UUID getReviewedBy() {
+        return reviewedBy;
+    }
+
+    public Instant getReviewedAt() {
+        return reviewedAt;
+    }
+
+    public String getRejectionReason() {
+        return rejectionReason;
     }
 
     public Instant getCreatedAt() {
