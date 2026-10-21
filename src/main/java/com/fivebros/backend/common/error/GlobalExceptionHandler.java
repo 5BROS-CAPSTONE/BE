@@ -8,6 +8,7 @@ import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -46,6 +47,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     ResponseEntity<ProblemDetail> handleConflict(HttpServletRequest request) {
         return error(HttpStatus.CONFLICT, "DATA_CONFLICT", "The request conflicts with existing data", request);
+    }
+
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    ResponseEntity<ProblemDetail> handleOptimisticLockingFailure(HttpServletRequest request) {
+        return error(HttpStatus.CONFLICT, "VERSION_CONFLICT", "The record was changed by another request", request);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)

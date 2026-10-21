@@ -1,6 +1,10 @@
 ALTER TABLE public.farms
-    ADD COLUMN location_latitude DOUBLE PRECISION,
-    ADD COLUMN location_longitude DOUBLE PRECISION,
+    ADD COLUMN location_latitude DOUBLE PRECISION;
+
+ALTER TABLE public.farms
+    ADD COLUMN location_longitude DOUBLE PRECISION;
+
+ALTER TABLE public.farms
     ADD CONSTRAINT ck_farms_location CHECK (
         (location_latitude IS NULL AND location_longitude IS NULL) OR
         (location_latitude IS NOT NULL AND location_longitude IS NOT NULL

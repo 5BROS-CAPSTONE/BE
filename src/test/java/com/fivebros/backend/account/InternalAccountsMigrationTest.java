@@ -60,7 +60,7 @@ class InternalAccountsMigrationTest {
                 WHERE id = ?
                 """, adminId, rejectedId);
 
-        Flyway upgraded = flyway(dataSource, "latest");
+        Flyway upgraded = flyway(dataSource, "20261014120001");
         assertThat(upgraded.migrate().migrationsExecuted).isEqualTo(1);
         upgraded.validate();
         assertThat(db.queryForObject("SELECT COUNT(*) FROM public.user_accounts", Integer.class)).isEqualTo(3);
