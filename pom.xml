@@ -19,6 +19,7 @@
     <properties>
         <java.version>21</java.version>
         <springdoc.version>3.1.1</springdoc.version>
+        <spotless.version>3.1.0</spotless.version>
     </properties>
 
     <dependencies>
@@ -88,6 +89,31 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>${spotless.version}</version>
+                <configuration>
+                    <java>
+                        <!-- Palantir keeps the 4-space indent this codebase and .editorconfig already use. -->
+                        <palantirJavaFormat/>
+                        <removeUnusedImports/>
+                        <importOrder>
+                            <order>java,javax,jakarta,,com.fivebros</order>
+                        </importOrder>
+                        <trimTrailingWhitespace/>
+                        <endWithNewline/>
+                    </java>
+                </configuration>
+                <executions>
+                    <execution>
+                        <!-- Fails the build on unformatted code, the way npm run check does for the frontend. -->
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
