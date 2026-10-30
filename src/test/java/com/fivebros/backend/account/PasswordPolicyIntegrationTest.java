@@ -1,12 +1,5 @@
 package com.fivebros.backend.account;
 
-import java.util.Map;
-import java.util.Set;
-
-import com.fivebros.backend.support.ApiIntegrationTest;
-import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -14,16 +7,32 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.Map;
+import java.util.Set;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
+
+import com.fivebros.backend.support.ApiIntegrationTest;
+
 class PasswordPolicyIntegrationTest extends ApiIntegrationTest {
 
     @Test
     void eightCharacterPasswordsWorkForAdminCreationAndPasswordReset() throws Exception {
         String password = "Abcd123!";
         String token = login(admin);
-        mvc.perform(post("/api/v1/users").header("Authorization", bearer(token))
+        mvc.perform(post("/api/v1/users")
+                        .header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(Map.of("email", "created@example.test", "fullName", "Created User",
-                                "password", password, "roles", Set.of("OPERATOR")))))
+                        .content(body(Map.of(
+                                "email",
+                                "created@example.test",
+                                "fullName",
+                                "Created User",
+                                "password",
+                                password,
+                                "roles",
+                                Set.of("OPERATOR")))))
                 .andExpect(status().isCreated());
         login("created@example.test", password);
 
@@ -41,10 +50,18 @@ class PasswordPolicyIntegrationTest extends ApiIntegrationTest {
     void sevenCharacterPasswordsAreRejectedWithoutCreatingAccountsOrChangingCredentials() throws Exception {
         String password = "Abc123!";
         String token = login(admin);
-        mvc.perform(post("/api/v1/users").header("Authorization", bearer(token))
+        mvc.perform(post("/api/v1/users")
+                        .header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(Map.of("email", "invalid@example.test", "fullName", "Invalid User",
-                                "password", password, "roles", Set.of("OPERATOR")))))
+                        .content(body(Map.of(
+                                "email",
+                                "invalid@example.test",
+                                "fullName",
+                                "Invalid User",
+                                "password",
+                                password,
+                                "roles",
+                                Set.of("OPERATOR")))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.password").value(containsString("at least 8 characters")));
         mvc.perform(put("/api/v1/users/" + operator.getId() + "/password")
@@ -63,17 +80,36 @@ class PasswordPolicyIntegrationTest extends ApiIntegrationTest {
         String token = login(admin);
         for (int index = 0; index < accepted.length; index++) {
             String email = "unicode-" + index + "@example.test";
-            mvc.perform(post("/api/v1/users").header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON)
-                            .content(body(Map.of("email", email, "fullName", "Unicode User", "password", accepted[index],
-                                    "roles", Set.of("OPERATOR")))))
+            mvc.perform(post("/api/v1/users")
+                            .header("Authorization", bearer(token))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body(Map.of(
+                                    "email",
+                                    email,
+                                    "fullName",
+                                    "Unicode User",
+                                    "password",
+                                    accepted[index],
+                                    "roles",
+                                    Set.of("OPERATOR")))))
                     .andExpect(status().isCreated());
             login(email, accepted[index]);
         }
         for (String password : rejected) {
-            mvc.perform(post("/api/v1/users").header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON)
-                            .content(body(Map.of("email", "rejected-unicode@example.test", "fullName", "Invalid User",
-                                    "password", password, "roles", Set.of("OPERATOR")))))
-                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.errors.password").exists());
+            mvc.perform(post("/api/v1/users")
+                            .header("Authorization", bearer(token))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body(Map.of(
+                                    "email",
+                                    "rejected-unicode@example.test",
+                                    "fullName",
+                                    "Invalid User",
+                                    "password",
+                                    password,
+                                    "roles",
+                                    Set.of("OPERATOR")))))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.errors.password").exists());
         }
     }
 }

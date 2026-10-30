@@ -1,11 +1,17 @@
 package com.fivebros.backend.auth;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 
-import com.fivebros.backend.config.JwtProperties;
-import com.fivebros.backend.support.ApiIntegrationTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -16,23 +22,24 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.fivebros.backend.config.JwtProperties;
+import com.fivebros.backend.support.ApiIntegrationTest;
 
 class AuthIntegrationTest extends ApiIntegrationTest {
 
-    @Autowired private JwtEncoder encoder;
-    @Autowired private JwtDecoder decoder;
-    @Autowired private JwtProperties properties;
+    @Autowired
+    private JwtEncoder encoder;
+
+    @Autowired
+    private JwtDecoder decoder;
+
+    @Autowired
+    private JwtProperties properties;
 
     @Test
     void loginReturnsTokenAndProfileWithoutPassword() throws Exception {
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(body(Map.of("email", "ADMIN@EXAMPLE.TEST", "password", PASSWORD))))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Cache-Control", "no-store"))
@@ -47,8 +54,9 @@ class AuthIntegrationTest extends ApiIntegrationTest {
 
     @Test
     void wrongPasswordAndUnknownAccountHaveTheSameError() throws Exception {
-        for (String email : new String[]{admin.getEmail(), "unknown@example.test"}) {
-            mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        for (String email : new String[] {admin.getEmail(), "unknown@example.test"}) {
+            mvc.perform(post("/api/v1/auth/login")
+                            .contentType(MediaType.APPLICATION_JSON)
                             .content(body(Map.of("email", email, "password", "incorrect-password"))))
                     .andExpect(status().isUnauthorized())
                     .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"))
@@ -59,8 +67,9 @@ class AuthIntegrationTest extends ApiIntegrationTest {
 
     @Test
     void protectedEndpointsRequireAnAccessToken() throws Exception {
-        for (String path : new String[]{"/api/v1/auth/me", "/api/v1/users", "/api/v1/roles"}) {
-            mvc.perform(get(path)).andExpect(status().isUnauthorized())
+        for (String path : new String[] {"/api/v1/auth/me", "/api/v1/users", "/api/v1/roles"}) {
+            mvc.perform(get(path))
+                    .andExpect(status().isUnauthorized())
                     .andExpect(header().string("WWW-Authenticate", "Bearer"))
                     .andExpect(jsonPath("$.code").value("UNAUTHENTICATED"));
         }
@@ -91,7 +100,10 @@ class AuthIntegrationTest extends ApiIntegrationTest {
     @Test
     void expiredJwtIsRejectedEvenInsideTheDefaultClockSkew() throws Exception {
         var original = decoder.decode(login(admin));
-        String expired = sign(admin.getId().toString(), original.getId(), properties.issuer(),
+        String expired = sign(
+                admin.getId().toString(),
+                original.getId(),
+                properties.issuer(),
                 clock.instant().minusSeconds(1));
         mvc.perform(get("/api/v1/auth/me").header("Authorization", bearer(expired)))
                 .andExpect(status().isUnauthorized());
@@ -102,10 +114,11 @@ class AuthIntegrationTest extends ApiIntegrationTest {
         var original = decoder.decode(login(admin));
         Instant expires = clock.instant().plusSeconds(600);
         String wrongIssuer = sign(admin.getId().toString(), original.getId(), "other-application", expires);
-        String unknownSession = sign(admin.getId().toString(), UUID.randomUUID().toString(), properties.issuer(), expires);
+        String unknownSession =
+                sign(admin.getId().toString(), UUID.randomUUID().toString(), properties.issuer(), expires);
         String wrongSubject = sign(operator.getId().toString(), original.getId(), properties.issuer(), expires);
         String missingExpiry = sign(admin.getId().toString(), original.getId(), properties.issuer(), null);
-        for (String token : new String[]{wrongIssuer, unknownSession, wrongSubject, missingExpiry}) {
+        for (String token : new String[] {wrongIssuer, unknownSession, wrongSubject, missingExpiry}) {
             mvc.perform(get("/api/v1/auth/me").header("Authorization", bearer(token)))
                     .andExpect(status().isUnauthorized());
         }
@@ -126,12 +139,16 @@ class AuthIntegrationTest extends ApiIntegrationTest {
     }
 
     private String sign(String subject, String sessionId, String issuer, Instant expires) {
-        JwtClaimsSet.Builder claims = JwtClaimsSet.builder().issuer(issuer)
-                .subject(subject).id(sessionId).issuedAt(clock.instant().minusSeconds(120));
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
+                .issuer(issuer)
+                .subject(subject)
+                .id(sessionId)
+                .issuedAt(clock.instant().minusSeconds(120));
         if (expires != null) {
             claims.expiresAt(expires);
         }
         return encoder.encode(JwtEncoderParameters.from(
-                JwsHeader.with(MacAlgorithm.HS256).type("JWT").build(), claims.build())).getTokenValue();
+                        JwsHeader.with(MacAlgorithm.HS256).type("JWT").build(), claims.build()))
+                .getTokenValue();
     }
 }

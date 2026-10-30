@@ -5,5 +5,4 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @EnableConfigurationProperties(AreaProperties.class)
-public class AreaConfiguration {
-}
+public class AreaConfiguration {}

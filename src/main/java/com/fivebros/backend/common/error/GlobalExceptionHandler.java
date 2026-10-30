@@ -5,6 +5,7 @@ import java.util.Map;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -30,8 +31,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     ResponseEntity<ProblemDetail> handleApiException(ApiException exception, HttpServletRequest request) {
-        return ResponseEntity.status(exception.status()).body(ErrorResponses.problem(
-                exception.status(), exception.code(), exception.getMessage(), request.getRequestURI()));
+        return ResponseEntity.status(exception.status())
+                .body(ErrorResponses.problem(
+                        exception.status(), exception.code(), exception.getMessage(), request.getRequestURI()));
     }
 
     @ExceptionHandler(AuthenticationException.class)
@@ -41,7 +43,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     ResponseEntity<ProblemDetail> handleAccessDenied(HttpServletRequest request) {
-        return error(HttpStatus.FORBIDDEN, "ACCESS_DENIED", "You do not have permission to perform this action", request);
+        return error(
+                HttpStatus.FORBIDDEN, "ACCESS_DENIED", "You do not have permission to perform this action", request);
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
@@ -67,24 +70,24 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(
-            MethodArgumentNotValidException exception, HttpHeaders headers,
-            HttpStatusCode status, WebRequest request) {
+            MethodArgumentNotValidException exception, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         Map<String, String> errors = new LinkedHashMap<>();
-        exception.getBindingResult().getFieldErrors()
+        exception
+                .getBindingResult()
+                .getFieldErrors()
                 .forEach(error -> errors.putIfAbsent(error.getField(), error.getDefaultMessage()));
-        ProblemDetail problem = ErrorResponses.problem(HttpStatus.BAD_REQUEST,
-                "VALIDATION_ERROR", "Request body is invalid", path(request));
+        ProblemDetail problem = ErrorResponses.problem(
+                HttpStatus.BAD_REQUEST, "VALIDATION_ERROR", "Request body is invalid", path(request));
         problem.setProperty("errors", errors);
         return ResponseEntity.badRequest().body(problem);
     }
 
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(
-            Exception exception, Object body, HttpHeaders headers,
-            HttpStatusCode status, WebRequest request) {
+            Exception exception, Object body, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
         HttpStatus resolved = HttpStatus.valueOf(status.value());
-        ProblemDetail problem = ErrorResponses.problem(resolved, "INVALID_REQUEST",
-                resolved.getReasonPhrase(), path(request));
+        ProblemDetail problem =
+                ErrorResponses.problem(resolved, "INVALID_REQUEST", resolved.getReasonPhrase(), path(request));
         return new ResponseEntity<>(problem, headers, status);
     }
 

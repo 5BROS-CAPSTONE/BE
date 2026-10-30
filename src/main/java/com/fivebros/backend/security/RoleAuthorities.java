@@ -9,8 +9,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 public final class RoleAuthorities {
 
-    private RoleAuthorities() {
-    }
+    private RoleAuthorities() {}
 
     public static Collection<GrantedAuthority> from(Set<Role> roles) {
         return roles.stream()

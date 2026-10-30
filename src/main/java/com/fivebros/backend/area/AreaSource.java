@@ -1,3 +1,6 @@
 package com.fivebros.backend.area;
 
-public enum AreaSource { MANUAL, BOUNDARY }
+public enum AreaSource {
+    MANUAL,
+    BOUNDARY
+}

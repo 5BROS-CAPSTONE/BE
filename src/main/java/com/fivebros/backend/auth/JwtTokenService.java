@@ -1,12 +1,13 @@
 package com.fivebros.backend.auth;
 
-import com.fivebros.backend.config.JwtProperties;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.stereotype.Service;
+
+import com.fivebros.backend.config.JwtProperties;
 
 @Service
 public class JwtTokenService {

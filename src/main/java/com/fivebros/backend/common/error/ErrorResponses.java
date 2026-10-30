@@ -7,8 +7,7 @@ import org.springframework.http.ProblemDetail;
 
 public final class ErrorResponses {
 
-    private ErrorResponses() {
-    }
+    private ErrorResponses() {}
 
     public static ProblemDetail problem(HttpStatus status, String code, String detail, String path) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, detail);

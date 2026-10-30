@@ -4,14 +4,16 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import com.fivebros.backend.security.Role;
 import jakarta.persistence.LockModeType;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import com.fivebros.backend.security.Role;
 
 public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> {
 
@@ -32,8 +34,7 @@ public interface UserAccountRepository extends JpaRepository<UserAccount, UUID> 
                    or lower(user.email) like concat('%', :search, '%')
                    or lower(user.fullName) like concat('%', :search, '%'))
             """)
-    Page<UserAccount> search(@Param("search") String search, @Param("status") AccountStatus status,
-                             Pageable pageable);
+    Page<UserAccount> search(@Param("search") String search, @Param("status") AccountStatus status, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select user from UserAccount user where user.id = :id")
