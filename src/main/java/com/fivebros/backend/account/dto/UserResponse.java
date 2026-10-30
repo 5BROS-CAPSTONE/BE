@@ -15,10 +15,15 @@ public record UserResponse(
         Set<Role> roles,
         AccountStatus status,
         Instant createdAt,
-        Instant updatedAt
-) {
+        Instant updatedAt) {
     public static UserResponse from(UserAccount user) {
-        return new UserResponse(user.getId(), user.getEmail(), user.getFullName(),
-                user.getRoles(), user.getStatus(), user.getCreatedAt(), user.getUpdatedAt());
+        return new UserResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getRoles(),
+                user.getStatus(),
+                user.getCreatedAt(),
+                user.getUpdatedAt());
     }
 }

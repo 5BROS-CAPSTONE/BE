@@ -3,7 +3,6 @@ package com.fivebros.backend.auth;
 import java.time.Instant;
 import java.util.UUID;
 
-import com.fivebros.backend.account.UserAccount;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -11,6 +10,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+
+import com.fivebros.backend.account.UserAccount;
 
 @Entity
 @Table(name = "auth_sessions")
@@ -31,8 +32,7 @@ public class AuthSession {
 
     private Instant revokedAt;
 
-    protected AuthSession() {
-    }
+    protected AuthSession() {}
 
     public AuthSession(UserAccount user, Instant createdAt, Instant expiresAt) {
         this.id = UUID.randomUUID();

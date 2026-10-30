@@ -10,8 +10,9 @@ public class PasswordValidator implements ConstraintValidator<ValidPassword, Str
     @Override
     public boolean isValid(String value, ConstraintValidatorContext context) {
         // Required password fields also use @NotBlank.
-        return value == null || (!value.isBlank()
-                && value.codePointCount(0, value.length()) >= PasswordPolicy.MIN_LENGTH
-                && value.getBytes(StandardCharsets.UTF_8).length <= PasswordPolicy.MAX_UTF8_BYTES);
+        return value == null
+                || (!value.isBlank()
+                        && value.codePointCount(0, value.length()) >= PasswordPolicy.MIN_LENGTH
+                        && value.getBytes(StandardCharsets.UTF_8).length <= PasswordPolicy.MAX_UTF8_BYTES);
     }
 }

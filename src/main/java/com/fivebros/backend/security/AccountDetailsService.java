@@ -2,12 +2,13 @@ package com.fivebros.backend.security;
 
 import java.util.Set;
 
-import com.fivebros.backend.account.UserAccountRepository;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.fivebros.backend.account.UserAccountRepository;
 
 @Service
 public class AccountDetailsService implements UserDetailsService {
@@ -24,7 +25,7 @@ public class AccountDetailsService implements UserDetailsService {
         // The login transaction holds this lock through password checking and session creation.
         var user = users.findByEmailForUpdate(email)
                 .orElseThrow(() -> new UsernameNotFoundException("Account was not found"));
-        return new AccountPrincipal(user.getId(), user.getEmail(), user.getPasswordHash(),
-                user.isActive() ? user.getRoles() : Set.of());
+        return new AccountPrincipal(
+                user.getId(), user.getEmail(), user.getPasswordHash(), user.isActive() ? user.getRoles() : Set.of());
     }
 }

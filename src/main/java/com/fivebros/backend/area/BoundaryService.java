@@ -6,9 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import com.fivebros.backend.area.dto.BoundaryPreview;
-import com.fivebros.backend.area.dto.PolygonGeometry;
-import com.fivebros.backend.common.error.ApiException;
+
 import net.sf.geographiclib.Geodesic;
 import net.sf.geographiclib.PolygonArea;
 import org.locationtech.jts.algorithm.Orientation;
@@ -19,12 +17,18 @@ import org.locationtech.jts.operation.valid.IsValidOp;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.fivebros.backend.area.dto.BoundaryPreview;
+import com.fivebros.backend.area.dto.PolygonGeometry;
+import com.fivebros.backend.common.error.ApiException;
+
 @Service
 public class BoundaryService {
     private final AreaProperties properties;
     private final GeometryFactory geometry = new GeometryFactory(new PrecisionModel(), 4326);
 
-    public BoundaryService(AreaProperties properties) { this.properties = properties; }
+    public BoundaryService(AreaProperties properties) {
+        this.properties = properties;
+    }
 
     public BoundaryPreview preview(PolygonGeometry input) {
         if (input == null) throw invalid("A boundary is required");
@@ -39,7 +43,8 @@ public class BoundaryService {
         List<List<Double>> positions = new ArrayList<>();
         for (int i = 0; i < ring.size(); i++) {
             List<Double> position = ring.get(i);
-            if (position == null || position.size() != 2) throw invalid("Vertex " + i + " must be [longitude, latitude]");
+            if (position == null || position.size() != 2)
+                throw invalid("Vertex " + i + " must be [longitude, latitude]");
             validatePosition(position.get(1), position.get(0), "Vertex " + i);
             positions.add(List.of(zero(position.get(0)), zero(position.get(1))));
         }
@@ -47,7 +52,8 @@ public class BoundaryService {
         if (positions.size() < 3 || positions.size() > properties.maxVertices()) {
             throw invalid("Boundary must have 3 to " + properties.maxVertices() + " vertices (excluding closure)");
         }
-        if (new HashSet<>(positions).size() != positions.size()) throw invalid("Boundary contains repeated vertices or degenerate edges");
+        if (new HashSet<>(positions).size() != positions.size())
+            throw invalid("Boundary contains repeated vertices or degenerate edges");
         double minLon = 180, maxLon = -180;
         for (int i = 0; i < positions.size(); i++) {
             var current = positions.get(i);
@@ -60,7 +66,8 @@ public class BoundaryService {
         }
         if (maxLon - minLon >= 180) throw unsupported("Boundary must describe a local land parcel");
         positions.add(positions.getFirst());
-        Coordinate[] coordinates = positions.stream().map(p -> new Coordinate(p.get(0), p.get(1))).toArray(Coordinate[]::new);
+        Coordinate[] coordinates =
+                positions.stream().map(p -> new Coordinate(p.get(0), p.get(1))).toArray(Coordinate[]::new);
         var polygon = geometry.createPolygon(coordinates);
         var error = new IsValidOp(polygon).getValidationError();
         if (error != null) throw invalid(error.getMessage() + " near " + error.getCoordinate());
@@ -76,18 +83,30 @@ public class BoundaryService {
         BigDecimal area = BigDecimal.valueOf(Math.abs(result.area)).setScale(6, RoundingMode.HALF_UP);
         BigDecimal perimeter = BigDecimal.valueOf(result.perimeter).setScale(6, RoundingMode.HALF_UP);
         if (area.signum() <= 0 || perimeter.signum() <= 0) throw invalid("Boundary is too small to measure");
-        return new BoundaryPreview(new PolygonGeometry("Polygon", List.of(List.copyOf(positions))),
-                positions.size() - 1, area, area.movePointLeft(4), perimeter);
+        return new BoundaryPreview(
+                new PolygonGeometry("Polygon", List.of(List.copyOf(positions))),
+                positions.size() - 1,
+                area,
+                area.movePointLeft(4),
+                perimeter);
     }
 
     static void validatePosition(Double latitude, Double longitude, String label) {
-        if (latitude == null || longitude == null || !Double.isFinite(latitude) || !Double.isFinite(longitude)
-                || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+        if (latitude == null
+                || longitude == null
+                || !Double.isFinite(latitude)
+                || !Double.isFinite(longitude)
+                || latitude < -90
+                || latitude > 90
+                || longitude < -180
+                || longitude > 180) {
             throw invalid(label + " requires finite latitude [-90,90] and longitude [-180,180]");
         }
     }
 
-    private double zero(double number) { return number == 0 ? 0.0 : number; }
+    private double zero(double number) {
+        return number == 0 ? 0.0 : number;
+    }
 
     private static ApiException invalid(String message) {
         return new ApiException(HttpStatus.BAD_REQUEST, "INVALID_BOUNDARY", message);

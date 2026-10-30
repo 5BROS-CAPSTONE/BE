@@ -6,7 +6,6 @@ import java.util.Base64;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
-import com.fivebros.backend.config.JwtProperties;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -18,6 +17,8 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+
+import com.fivebros.backend.config.JwtProperties;
 
 @Configuration
 public class JwtConfiguration {
@@ -52,7 +53,8 @@ public class JwtConfiguration {
     @Bean
     JwtDecoder jwtDecoder(SecretKey jwtSigningKey, JwtProperties properties) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(jwtSigningKey)
-                .macAlgorithm(MacAlgorithm.HS256).build();
+                .macAlgorithm(MacAlgorithm.HS256)
+                .build();
         decoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(properties.issuer()));
         return decoder;
     }

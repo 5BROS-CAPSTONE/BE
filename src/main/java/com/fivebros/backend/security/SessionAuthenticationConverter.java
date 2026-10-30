@@ -3,8 +3,6 @@ package com.fivebros.backend.security;
 import java.time.Clock;
 import java.util.UUID;
 
-import com.fivebros.backend.auth.AuthSession;
-import com.fivebros.backend.auth.AuthSessionRepository;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -12,6 +10,9 @@ import org.springframework.security.oauth2.server.resource.InvalidBearerTokenExc
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.fivebros.backend.auth.AuthSession;
+import com.fivebros.backend.auth.AuthSessionRepository;
 
 @Component
 public class SessionAuthenticationConverter implements Converter<Jwt, AbstractAuthenticationToken> {
@@ -39,11 +40,13 @@ public class SessionAuthenticationConverter implements Converter<Jwt, AbstractAu
             throw invalidSession();
         }
         AuthSession session = sessions.findWithUser(sessionId).orElseThrow(this::invalidSession);
-        if (!session.isActiveAt(clock.instant()) || !session.getUser().getId().equals(userId)
+        if (!session.isActiveAt(clock.instant())
+                || !session.getUser().getId().equals(userId)
                 || !session.getUser().isActive()) {
             throw invalidSession();
         }
-        return new JwtAuthenticationToken(jwt, RoleAuthorities.from(session.getUser().getRoles()), userId.toString());
+        return new JwtAuthenticationToken(
+                jwt, RoleAuthorities.from(session.getUser().getRoles()), userId.toString());
     }
 
     private InvalidBearerTokenException invalidSession() {

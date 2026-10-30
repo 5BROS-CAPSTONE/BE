@@ -3,15 +3,17 @@ package com.fivebros.backend.area;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.util.UUID;
-import com.fivebros.backend.area.dto.*;
-import com.fivebros.backend.common.PageResponse;
-import com.fivebros.backend.common.error.ApiException;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
+
+import com.fivebros.backend.area.dto.*;
+import com.fivebros.backend.common.PageResponse;
+import com.fivebros.backend.common.error.ApiException;
 
 @Service
 @Transactional(readOnly = true)
@@ -22,8 +24,8 @@ public class AreaService {
     private final ObjectMapper json;
     private final Clock clock;
 
-    public AreaService(FarmRepository farms, FieldRepository fields, BoundaryService boundaries,
-                       ObjectMapper json, Clock clock) {
+    public AreaService(
+            FarmRepository farms, FieldRepository fields, BoundaryService boundaries, ObjectMapper json, Clock clock) {
         this.farms = farms;
         this.fields = fields;
         this.boundaries = boundaries;
@@ -42,7 +44,8 @@ public class AreaService {
 
     @Transactional
     public FarmResponse createFarm(UUID actor, FarmRequest request) {
-        return FarmResponse.from(farms.saveAndFlush(new Farm(actor, clock.instant(), request.name(), request.description())), 0);
+        return FarmResponse.from(
+                farms.saveAndFlush(new Farm(actor, clock.instant(), request.name(), request.description())), 0);
     }
 
     @Transactional
@@ -56,11 +59,14 @@ public class AreaService {
 
     public PageResponse<FieldResponse> listFields(UUID farmId, String search, int page, int size) {
         findFarm(farmId);
-        return PageResponse.from(fields.findByFarmIdAndNameContainingIgnoreCase(farmId, search.strip(), paging(page, size))
-                .map(this::response));
+        return PageResponse.from(
+                fields.findByFarmIdAndNameContainingIgnoreCase(farmId, search.strip(), paging(page, size))
+                        .map(this::response));
     }
 
-    public FieldResponse getField(UUID id) { return response(findField(id)); }
+    public FieldResponse getField(UUID id) {
+        return response(findField(id));
+    }
 
     @Transactional
     public FieldResponse createField(UUID actor, UUID farmId, CreateFieldRequest request) {
@@ -68,7 +74,13 @@ public class AreaService {
         validateCoordinates(request.referenceLatitude(), request.referenceLongitude(), "Reference point");
         BigDecimal declared = declaredArea(request.declaredArea(), request.areaUnit());
         Field field = new Field(farmId, actor, clock.instant());
-        field.updateProfile(request.name(), request.description(), request.referenceLatitude(), request.referenceLongitude(), actor, clock.instant());
+        field.updateProfile(
+                request.name(),
+                request.description(),
+                request.referenceLatitude(),
+                request.referenceLongitude(),
+                actor,
+                clock.instant());
         field.declareArea(declared);
         if (request.boundary() != null) {
             applyBoundary(field, request.boundary(), request.boundarySource(), actor);
@@ -76,7 +88,8 @@ public class AreaService {
             if (request.boundarySource() != null && request.boundarySource() != BoundarySource.NONE) {
                 throw badRequest("INVALID_BOUNDARY", "boundarySource requires a boundary");
             }
-            if (declared == null) throw badRequest("AREA_REQUIRED", "Supply a positive declared area or a valid boundary");
+            if (declared == null)
+                throw badRequest("AREA_REQUIRED", "Supply a positive declared area or a valid boundary");
         }
         return response(fields.saveAndFlush(field));
     }
@@ -89,11 +102,19 @@ public class AreaService {
         BigDecimal declared = declaredArea(request.declaredArea(), request.areaUnit());
         if (declared != null) {
             if (field.getAreaSource() == AreaSource.BOUNDARY) {
-                throw badRequest("BOUNDARY_AREA_READ_ONLY", "Area is calculated from the boundary; use the boundary endpoint to change it");
+                throw badRequest(
+                        "BOUNDARY_AREA_READ_ONLY",
+                        "Area is calculated from the boundary; use the boundary endpoint to change it");
             }
             field.declareArea(declared);
         }
-        field.updateProfile(request.name(), request.description(), request.referenceLatitude(), request.referenceLongitude(), actor, clock.instant());
+        field.updateProfile(
+                request.name(),
+                request.description(),
+                request.referenceLatitude(),
+                request.referenceLongitude(),
+                actor,
+                clock.instant());
         fields.flush();
         return response(field);
     }
@@ -119,7 +140,8 @@ public class AreaService {
     }
 
     private BoundarySource boundarySource(BoundarySource source) {
-        if (source == BoundarySource.NONE) throw badRequest("INVALID_BOUNDARY", "A polygon requires KML or MANUAL_COORDINATES as its source");
+        if (source == BoundarySource.NONE)
+            throw badRequest("INVALID_BOUNDARY", "A polygon requires KML or MANUAL_COORDINATES as its source");
         return source == null ? BoundarySource.MANUAL_COORDINATES : source;
     }
 
@@ -147,20 +169,26 @@ public class AreaService {
     }
 
     private Farm findFarm(UUID id) {
-        return farms.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "FARM_NOT_FOUND", "Farm was not found"));
+        return farms.findById(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "FARM_NOT_FOUND", "Farm was not found"));
     }
 
     private Field findField(UUID id) {
-        return fields.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "FIELD_NOT_FOUND", "Field was not found"));
+        return fields.findById(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "FIELD_NOT_FOUND", "Field was not found"));
     }
 
     private FieldResponse response(Field field) {
-        return FieldResponse.from(field, field.getBoundaryGeojson() == null ? null
-                : json.readValue(field.getBoundaryGeojson(), PolygonGeometry.class));
+        return FieldResponse.from(
+                field,
+                field.getBoundaryGeojson() == null
+                        ? null
+                        : json.readValue(field.getBoundaryGeojson(), PolygonGeometry.class));
     }
 
     private PageRequest paging(int page, int size) {
-        return PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by("id")));
+        return PageRequest.of(
+                page, size, Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by("id")));
     }
 
     private ApiException badRequest(String code, String message) {

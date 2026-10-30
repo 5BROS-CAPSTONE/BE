@@ -1,12 +1,14 @@
 package com.fivebros.backend.area;
 
 import java.util.UUID;
-import com.fivebros.backend.area.dto.FarmResponse;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import com.fivebros.backend.area.dto.FarmResponse;
 
 public interface FarmRepository extends JpaRepository<Farm, UUID> {
     Page<Farm> findByNameContainingIgnoreCase(String search, Pageable pageable);

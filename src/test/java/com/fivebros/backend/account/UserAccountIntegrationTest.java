@@ -1,19 +1,5 @@
 package com.fivebros.backend.account;
 
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
-import com.fivebros.backend.security.Role;
-import com.fivebros.backend.support.ApiIntegrationTest;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
-import org.springframework.http.MediaType;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -22,63 +8,108 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.springframework.http.MediaType;
+
+import com.fivebros.backend.security.Role;
+import com.fivebros.backend.support.ApiIntegrationTest;
+
 class UserAccountIntegrationTest extends ApiIntegrationTest {
 
     @Test
     void adminCanCreateReadSearchAndUpdateAnAccount() throws Exception {
         String token = login(admin);
-        String response = mvc.perform(post("/api/v1/users").header("Authorization", bearer(token))
+        String response = mvc.perform(post("/api/v1/users")
+                        .header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(Map.of("email", "MANAGER@EXAMPLE.TEST", "fullName", "Mission Manager",
-                                "password", PASSWORD, "roles", Set.of("MANAGER")))))
+                        .content(body(Map.of(
+                                "email",
+                                "MANAGER@EXAMPLE.TEST",
+                                "fullName",
+                                "Mission Manager",
+                                "password",
+                                PASSWORD,
+                                "roles",
+                                Set.of("MANAGER")))))
                 .andExpect(status().isCreated())
                 .andExpect(header().exists("Location"))
                 .andExpect(jsonPath("$.email").value("manager@example.test"))
                 .andExpect(jsonPath("$.passwordHash").doesNotExist())
-                .andReturn().getResponse().getContentAsString();
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
         String id = read(response).get("id").asString();
         UserAccount saved = users.findById(UUID.fromString(id)).orElseThrow();
         assertThat(saved.getPasswordHash()).isNotEqualTo(PASSWORD);
         assertThat(passwords.matches(PASSWORD, saved.getPasswordHash())).isTrue();
 
         mvc.perform(get("/api/v1/users/" + id).header("Authorization", bearer(token)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.fullName").value("Mission Manager"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fullName").value("Mission Manager"));
         mvc.perform(get("/api/v1/users").param("search", "MANAGER").header("Authorization", bearer(token)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
-        mvc.perform(put("/api/v1/users/" + id).header("Authorization", bearer(token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1));
+        mvc.perform(put("/api/v1/users/" + id)
+                        .header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(Map.of("email", "manager-new@example.test", "fullName", "Updated Manager"))))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.fullName").value("Updated Manager"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.fullName").value("Updated Manager"));
         login("manager-new@example.test", PASSWORD);
     }
 
     @ParameterizedTest
     @EnumSource(value = Role.class, names = "ADMIN", mode = EnumSource.Mode.EXCLUDE)
     void everyNonAdminRoleCanReadOwnProfileButCannotManageAccounts(Role role) throws Exception {
-        UserAccount user = users.saveAndFlush(new UserAccount(role.name().toLowerCase() + "-role@example.test",
-                role.label(), passwords.encode(PASSWORD), Set.of(role), clock.instant()));
+        UserAccount user = users.saveAndFlush(new UserAccount(
+                role.name().toLowerCase() + "-role@example.test",
+                role.label(),
+                passwords.encode(PASSWORD),
+                Set.of(role),
+                clock.instant()));
         String token = login(user);
         mvc.perform(get("/api/v1/auth/me").header("Authorization", bearer(token)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.id").value(user.getId().toString()));
-        for (String path : new String[]{"/api/v1/users", "/api/v1/users/" + admin.getId(), "/api/v1/roles"}) {
-            mvc.perform(get(path).header("Authorization", bearer(token)))
-                    .andExpect(status().isForbidden());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(user.getId().toString()));
+        for (String path : new String[] {"/api/v1/users", "/api/v1/users/" + admin.getId(), "/api/v1/roles"}) {
+            mvc.perform(get(path).header("Authorization", bearer(token))).andExpect(status().isForbidden());
         }
-        mvc.perform(post("/api/v1/users").header("Authorization", bearer(token))
+        mvc.perform(post("/api/v1/users")
+                        .header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(Map.of("email", "new@example.test", "fullName", "New User",
-                                "password", PASSWORD, "roles", Set.of("ADMIN")))))
+                        .content(body(Map.of(
+                                "email",
+                                "new@example.test",
+                                "fullName",
+                                "New User",
+                                "password",
+                                PASSWORD,
+                                "roles",
+                                Set.of("ADMIN")))))
                 .andExpect(status().isForbidden());
-        mvc.perform(put("/api/v1/users/" + admin.getId()).header("Authorization", bearer(token))
+        mvc.perform(put("/api/v1/users/" + admin.getId())
+                        .header("Authorization", bearer(token))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(Map.of("email", admin.getEmail(), "fullName", "Changed"))))
                 .andExpect(status().isForbidden());
         mvc.perform(put("/api/v1/users/" + admin.getId() + "/password")
-                        .header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(body(Map.of("password", "Abcd123!"))))
                 .andExpect(status().isForbidden());
-        mvc.perform(put("/api/v1/users/" + user.getId() + "/roles").header("Authorization", bearer(token))
-                        .contentType(MediaType.APPLICATION_JSON).content(body(Map.of("roles", Set.of("ADMIN")))))
+        mvc.perform(put("/api/v1/users/" + user.getId() + "/roles")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(Map.of("roles", Set.of("ADMIN")))))
                 .andExpect(status().isForbidden());
     }
 
@@ -99,7 +130,8 @@ class UserAccountIntegrationTest extends ApiIntegrationTest {
     @Test
     void lastAdministratorCannotLoseTheAdminRole() throws Exception {
         mvc.perform(put("/api/v1/users/" + admin.getId() + "/roles")
-                        .header("Authorization", bearer(login(admin))).contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", bearer(login(admin)))
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(body(Map.of("roles", Set.of("MANAGER")))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("LAST_ADMIN_REQUIRED"));
@@ -107,8 +139,12 @@ class UserAccountIntegrationTest extends ApiIntegrationTest {
 
     @Test
     void concurrentRoleChangesCannotRemoveBothAdministrators() throws Exception {
-        UserAccount secondAdmin = users.saveAndFlush(new UserAccount("second-admin@example.test",
-                "Second Administrator", admin.getPasswordHash(), Set.of(Role.ADMIN), clock.instant()));
+        UserAccount secondAdmin = users.saveAndFlush(new UserAccount(
+                "second-admin@example.test",
+                "Second Administrator",
+                admin.getPasswordHash(),
+                Set.of(Role.ADMIN),
+                clock.instant()));
         String token = login(admin);
         CountDownLatch ready = new CountDownLatch(2);
         CountDownLatch start = new CountDownLatch(1);
@@ -119,8 +155,9 @@ class UserAccountIntegrationTest extends ApiIntegrationTest {
             start.countDown();
             int firstStatus = first.get(10, TimeUnit.SECONDS);
             int secondStatus = second.get(10, TimeUnit.SECONDS);
-            assertThat(new int[]{firstStatus, secondStatus}).contains(200);
-            assertThat(firstStatus == 403 || firstStatus == 409 || secondStatus == 403 || secondStatus == 409).isTrue();
+            assertThat(new int[] {firstStatus, secondStatus}).contains(200);
+            assertThat(firstStatus == 403 || firstStatus == 409 || secondStatus == 403 || secondStatus == 409)
+                    .isTrue();
         } finally {
             start.countDown();
         }
@@ -141,11 +178,12 @@ class UserAccountIntegrationTest extends ApiIntegrationTest {
                 .andExpect(jsonPath("$.id").value(operator.getId().toString()))
                 .andExpect(jsonPath("$.email").value(operator.getEmail()))
                 .andExpect(jsonPath("$.fullName").value(operator.getFullName()));
-        for (String token : new String[]{oldSession, anotherOldSession}) {
+        for (String token : new String[] {oldSession, anotherOldSession}) {
             mvc.perform(get("/api/v1/auth/me").header("Authorization", bearer(token)))
                     .andExpect(status().isUnauthorized());
         }
-        mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
+        mvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(body(Map.of("email", operator.getEmail(), "password", PASSWORD))))
                 .andExpect(status().isUnauthorized());
         login(operator.getEmail(), newPassword);
@@ -153,10 +191,18 @@ class UserAccountIntegrationTest extends ApiIntegrationTest {
 
     @Test
     void duplicateEmailIsRejectedCaseInsensitively() throws Exception {
-        mvc.perform(post("/api/v1/users").header("Authorization", bearer(login(admin)))
+        mvc.perform(post("/api/v1/users")
+                        .header("Authorization", bearer(login(admin)))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(Map.of("email", "ADMIN@EXAMPLE.TEST", "fullName", "Duplicate",
-                                "password", PASSWORD, "roles", Set.of("MANAGER")))))
+                        .content(body(Map.of(
+                                "email",
+                                "ADMIN@EXAMPLE.TEST",
+                                "fullName",
+                                "Duplicate",
+                                "password",
+                                PASSWORD,
+                                "roles",
+                                Set.of("MANAGER")))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("EMAIL_ALREADY_EXISTS"));
     }
@@ -164,21 +210,30 @@ class UserAccountIntegrationTest extends ApiIntegrationTest {
     @Test
     void invalidPasswordRolesAndPaginationReturnBadRequest() throws Exception {
         String token = login(admin);
-        for (String password : new String[]{"short", "a".repeat(73), "ắ".repeat(25)}) {
-            mvc.perform(post("/api/v1/users").header("Authorization", bearer(token))
+        for (String password : new String[] {"short", "a".repeat(73), "ắ".repeat(25)}) {
+            mvc.perform(post("/api/v1/users")
+                            .header("Authorization", bearer(token))
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content(body(Map.of("email", "invalid@example.test", "fullName", "Invalid",
-                                    "password", password, "roles", Set.of("MANAGER")))))
+                            .content(body(Map.of(
+                                    "email",
+                                    "invalid@example.test",
+                                    "fullName",
+                                    "Invalid",
+                                    "password",
+                                    password,
+                                    "roles",
+                                    Set.of("MANAGER")))))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.errors.password").exists());
         }
         for (Set<String> roles : Set.of(Set.<String>of(), Set.of("SUPER_ADMIN"))) {
             mvc.perform(put("/api/v1/users/" + operator.getId() + "/roles")
-                            .header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON)
+                            .header("Authorization", bearer(token))
+                            .contentType(MediaType.APPLICATION_JSON)
                             .content(body(Map.of("roles", roles))))
                     .andExpect(status().isBadRequest());
         }
-        for (String size : new String[]{"0", "101"}) {
+        for (String size : new String[] {"0", "101"}) {
             mvc.perform(get("/api/v1/users").param("size", size).header("Authorization", bearer(token)))
                     .andExpect(status().isBadRequest());
         }
@@ -190,14 +245,18 @@ class UserAccountIntegrationTest extends ApiIntegrationTest {
     void adminCanReadAllSixRolesAndUnknownAccountsReturnNotFound() throws Exception {
         String token = login(admin);
         mvc.perform(get("/api/v1/roles").header("Authorization", bearer(token)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(6));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(6));
         mvc.perform(get("/api/v1/users/" + UUID.randomUUID()).header("Authorization", bearer(token)))
-                .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
     }
 
     private void assignRoles(String token, UUID userId, Set<String> roles) throws Exception {
-        mvc.perform(put("/api/v1/users/" + userId + "/roles").header("Authorization", bearer(token))
-                        .contentType(MediaType.APPLICATION_JSON).content(body(Map.of("roles", roles))))
+        mvc.perform(put("/api/v1/users/" + userId + "/roles")
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(Map.of("roles", roles))))
                 .andExpect(status().isOk());
     }
 
@@ -208,8 +267,11 @@ class UserAccountIntegrationTest extends ApiIntegrationTest {
             throw new IllegalStateException("Concurrent role check did not start");
         }
         return mvc.perform(put("/api/v1/users/" + userId + "/roles")
-                        .header("Authorization", bearer(token)).contentType(MediaType.APPLICATION_JSON)
+                        .header("Authorization", bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content(body(Map.of("roles", Set.of("MANAGER")))))
-                .andReturn().getResponse().getStatus();
+                .andReturn()
+                .getResponse()
+                .getStatus();
     }
 }

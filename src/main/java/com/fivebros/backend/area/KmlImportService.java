@@ -6,13 +6,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+
 import javax.xml.XMLConstants;
 import javax.xml.parsers.DocumentBuilderFactory;
-import com.fivebros.backend.area.dto.KmlPreviewResponse;
-import com.fivebros.backend.area.dto.KmlPreviewResponse.Candidate;
-import com.fivebros.backend.area.dto.KmlPreviewResponse.Issue;
-import com.fivebros.backend.area.dto.PolygonGeometry;
-import com.fivebros.backend.common.error.ApiException;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,10 +20,17 @@ import org.xml.sax.SAXException;
 import org.xml.sax.SAXParseException;
 import org.xml.sax.helpers.DefaultHandler;
 
+import com.fivebros.backend.area.dto.KmlPreviewResponse;
+import com.fivebros.backend.area.dto.KmlPreviewResponse.Candidate;
+import com.fivebros.backend.area.dto.KmlPreviewResponse.Issue;
+import com.fivebros.backend.area.dto.PolygonGeometry;
+import com.fivebros.backend.common.error.ApiException;
+
 @Service
 public class KmlImportService {
     private static final String KML = "http://www.opengis.net/kml/2.2";
-    private static final Set<String> GEOMETRIES = Set.of("Polygon", "Point", "LineString", "LinearRing", "MultiGeometry", "Model", "Track", "MultiTrack");
+    private static final Set<String> GEOMETRIES =
+            Set.of("Polygon", "Point", "LineString", "LinearRing", "MultiGeometry", "Model", "Track", "MultiTrack");
     private final BoundaryService boundaries;
     private final AreaProperties properties;
 
@@ -64,27 +68,37 @@ public class KmlImportService {
         for (int i = 0; i < placemarks.getLength(); i++) {
             Element placemark = (Element) placemarks.item(i);
             List<Element> names = children(placemark, "name");
-            String name = names.isEmpty() ? null : names.getFirst().getTextContent().strip();
+            String name =
+                    names.isEmpty() ? null : names.getFirst().getTextContent().strip();
             int before = candidates.size();
             for (Node child = placemark.getFirstChild(); child != null; child = child.getNextSibling()) {
                 if (!(child instanceof Element element) || !GEOMETRIES.contains(element.getLocalName())) continue;
-                if (candidates.size() >= properties.maxKmlFeatures()) throw error("INVALID_KML", "Too many KML geometries");
+                if (candidates.size() >= properties.maxKmlFeatures())
+                    throw error("INVALID_KML", "Too many KML geometries");
                 candidates.add(candidate(candidates.size(), name, element));
             }
             if (candidates.size() == before) {
-                if (candidates.size() >= properties.maxKmlFeatures()) throw error("INVALID_KML", "Too many KML geometries");
-                candidates.add(failed(candidates.size(), name, "UNSUPPORTED_KML_GEOMETRY", "Placemark has no supported polygon geometry"));
+                if (candidates.size() >= properties.maxKmlFeatures())
+                    throw error("INVALID_KML", "Too many KML geometries");
+                candidates.add(failed(
+                        candidates.size(),
+                        name,
+                        "UNSUPPORTED_KML_GEOMETRY",
+                        "Placemark has no supported polygon geometry"));
             }
         }
         List<String> warnings = root.getElementsByTagNameNS(KML, "NetworkLink").getLength() > 0
-                ? List.of("NetworkLink resources were ignored and were not fetched") : List.of();
+                ? List.of("NetworkLink resources were ignored and were not fetched")
+                : List.of();
         return new KmlPreviewResponse(List.copyOf(candidates), warnings);
     }
 
     private Candidate candidate(int index, String name, Element polygon) {
         try {
             if (!KML.equals(polygon.getNamespaceURI()) || !"Polygon".equals(polygon.getLocalName())) {
-                throw error("UNSUPPORTED_KML_GEOMETRY", polygon.getLocalName() + " is not supported; supply a single Polygon");
+                throw error(
+                        "UNSUPPORTED_KML_GEOMETRY",
+                        polygon.getLocalName() + " is not supported; supply a single Polygon");
             }
             if (polygon.getElementsByTagNameNS(KML, "innerBoundaryIs").getLength() > 0) {
                 throw error("UNSUPPORTED_KML_GEOMETRY", "Polygon holes are not supported");
@@ -96,9 +110,11 @@ public class KmlImportService {
             List<List<Double>> positions = new ArrayList<>();
             boolean altitude = false;
             for (String tuple : text.split("\\s+")) {
-                if (positions.size() >= properties.maxVertices() + 1) throw error("INVALID_BOUNDARY", "Polygon exceeds the configured vertex limit");
+                if (positions.size() >= properties.maxVertices() + 1)
+                    throw error("INVALID_BOUNDARY", "Polygon exceeds the configured vertex limit");
                 String[] values = tuple.split(",", -1);
-                if (values.length < 2 || values.length > 3) throw error("INVALID_KML", "Expected longitude,latitude[,altitude]");
+                if (values.length < 2 || values.length > 3)
+                    throw error("INVALID_KML", "Expected longitude,latitude[,altitude]");
                 double longitude = finite(values[0]);
                 double latitude = finite(values[1]);
                 if (values.length == 3) {
@@ -108,7 +124,12 @@ public class KmlImportService {
                 positions.add(List.of(longitude, latitude));
             }
             var preview = boundaries.preview(new PolygonGeometry("Polygon", List.of(positions)));
-            return new Candidate(index, name, true, preview, List.of(),
+            return new Candidate(
+                    index,
+                    name,
+                    true,
+                    preview,
+                    List.of(),
                     altitude ? List.of("Altitude was ignored; measurements use the 2D WGS84 boundary") : List.of());
         } catch (ApiException exception) {
             return failed(index, name, exception.code(), exception.getMessage());
@@ -140,10 +161,19 @@ public class KmlImportService {
             factory.setXIncludeAware(false);
             factory.setExpandEntityReferences(false);
             var builder = factory.newDocumentBuilder();
-            builder.setEntityResolver((publicId, systemId) -> { throw new SAXException("External XML resources are disabled"); });
+            builder.setEntityResolver((publicId, systemId) -> {
+                throw new SAXException("External XML resources are disabled");
+            });
             builder.setErrorHandler(new DefaultHandler() {
-                @Override public void error(SAXParseException exception) throws SAXException { throw exception; }
-                @Override public void fatalError(SAXParseException exception) throws SAXException { throw exception; }
+                @Override
+                public void error(SAXParseException exception) throws SAXException {
+                    throw exception;
+                }
+
+                @Override
+                public void fatalError(SAXParseException exception) throws SAXException {
+                    throw exception;
+                }
             });
             return builder.parse(new ByteArrayInputStream(bytes));
         } catch (SAXException | IOException exception) {
@@ -162,7 +192,9 @@ public class KmlImportService {
     private List<Element> children(Element parent, String name) {
         List<Element> result = new ArrayList<>();
         for (Node child = parent.getFirstChild(); child != null; child = child.getNextSibling()) {
-            if (child instanceof Element element && KML.equals(element.getNamespaceURI()) && name.equals(element.getLocalName())) result.add(element);
+            if (child instanceof Element element
+                    && KML.equals(element.getNamespaceURI())
+                    && name.equals(element.getLocalName())) result.add(element);
         }
         return result;
     }
@@ -171,7 +203,12 @@ public class KmlImportService {
         return new Candidate(index, name, false, null, List.of(new Issue(code, message)), List.of());
     }
 
-    private ApiException error(String code, String message) { return new ApiException(HttpStatus.BAD_REQUEST, code, message); }
+    private ApiException error(String code, String message) {
+        return new ApiException(HttpStatus.BAD_REQUEST, code, message);
+    }
 
-    private ApiException tooLarge() { return new ApiException(HttpStatus.PAYLOAD_TOO_LARGE, "KML_TOO_LARGE", "KML file exceeds the configured size limit"); }
+    private ApiException tooLarge() {
+        return new ApiException(
+                HttpStatus.PAYLOAD_TOO_LARGE, "KML_TOO_LARGE", "KML file exceeds the configured size limit");
+    }
 }

@@ -5,7 +5,6 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
-import com.fivebros.backend.security.Role;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -17,7 +16,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
+
 import org.hibernate.annotations.BatchSize;
+
+import com.fivebros.backend.security.Role;
 
 @Entity
 @Table(name = "user_accounts")
@@ -55,8 +57,7 @@ public class UserAccount {
     @Version
     private long version;
 
-    protected UserAccount() {
-    }
+    protected UserAccount() {}
 
     public UserAccount(String email, String fullName, String passwordHash, Set<Role> roles, Instant now) {
         this.id = UUID.randomUUID();

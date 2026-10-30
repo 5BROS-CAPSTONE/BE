@@ -5,6 +5,13 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.fivebros.backend.account.dto.CreateUserRequest;
 import com.fivebros.backend.account.dto.UpdateUserRequest;
 import com.fivebros.backend.account.dto.UserResponse;
@@ -12,12 +19,6 @@ import com.fivebros.backend.auth.AuthSessionRepository;
 import com.fivebros.backend.common.PageResponse;
 import com.fivebros.backend.common.error.ApiException;
 import com.fivebros.backend.security.Role;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional(readOnly = true)
@@ -28,8 +29,8 @@ public class UserAccountService {
     private final PasswordEncoder passwords;
     private final Clock clock;
 
-    public UserAccountService(UserAccountRepository users, AuthSessionRepository sessions,
-                              PasswordEncoder passwords, Clock clock) {
+    public UserAccountService(
+            UserAccountRepository users, AuthSessionRepository sessions, PasswordEncoder passwords, Clock clock) {
         this.users = users;
         this.sessions = sessions;
         this.passwords = passwords;
@@ -38,8 +39,9 @@ public class UserAccountService {
 
     public PageResponse<UserResponse> list(String search, AccountStatus status, int page, int size) {
         Sort sort = Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by("id"));
-        return PageResponse.from(users.search(search.strip().toLowerCase(Locale.ROOT), status,
-                PageRequest.of(page, size, sort)).map(UserResponse::from));
+        return PageResponse.from(
+                users.search(search.strip().toLowerCase(Locale.ROOT), status, PageRequest.of(page, size, sort))
+                        .map(UserResponse::from));
     }
 
     public UserResponse get(UUID id) {
@@ -52,8 +54,12 @@ public class UserAccountService {
         if (users.existsByEmail(email)) {
             throw emailAlreadyExists();
         }
-        UserAccount user = new UserAccount(email, request.fullName().strip(),
-                passwords.encode(request.password()), request.roles(), clock.instant());
+        UserAccount user = new UserAccount(
+                email,
+                request.fullName().strip(),
+                passwords.encode(request.password()),
+                request.roles(),
+                clock.instant());
         return UserResponse.from(users.saveAndFlush(user));
     }
 
@@ -69,12 +75,15 @@ public class UserAccountService {
         }
         user.updateProfile(email, request.fullName().strip(), clock.instant());
         if (request.status() != null && request.status() != user.getStatus()) {
-            if (request.status() == AccountStatus.DISABLED && user.getRoles().contains(Role.ADMIN)
+            if (request.status() == AccountStatus.DISABLED
+                    && user.getRoles().contains(Role.ADMIN)
                     && users.countActiveUsersWithRole(Role.ADMIN) <= 1) {
                 throw lastAdministratorRequired();
             }
             if (request.status() == AccountStatus.ACTIVE && user.getRoles().isEmpty()) {
-                throw new ApiException(HttpStatus.CONFLICT, "ACCOUNT_ROLES_REQUIRED",
+                throw new ApiException(
+                        HttpStatus.CONFLICT,
+                        "ACCOUNT_ROLES_REQUIRED",
                         "Assign at least one role before activating the account");
             }
             user.changeStatus(request.status(), clock.instant());
@@ -101,7 +110,9 @@ public class UserAccountService {
         users.lockUsersWithRole(Role.ADMIN);
         requireAdministrator(actorId);
         UserAccount user = users.findByIdForUpdate(userId).orElseThrow(this::userNotFound);
-        if (user.isActive() && user.getRoles().contains(Role.ADMIN) && !roles.contains(Role.ADMIN)
+        if (user.isActive()
+                && user.getRoles().contains(Role.ADMIN)
+                && !roles.contains(Role.ADMIN)
                 && users.countActiveUsersWithRole(Role.ADMIN) <= 1) {
             throw lastAdministratorRequired();
         }
@@ -122,8 +133,8 @@ public class UserAccountService {
     }
 
     private ApiException lastAdministratorRequired() {
-        return new ApiException(HttpStatus.CONFLICT, "LAST_ADMIN_REQUIRED",
-                "The system must retain at least one active administrator");
+        return new ApiException(
+                HttpStatus.CONFLICT, "LAST_ADMIN_REQUIRED", "The system must retain at least one active administrator");
     }
 
     private ApiException userNotFound() {

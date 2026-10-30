@@ -4,14 +4,16 @@ import java.net.URI;
 import java.time.Clock;
 import java.util.Locale;
 import java.util.UUID;
-import com.fivebros.backend.common.PageResponse;
-import com.fivebros.backend.common.error.ApiException;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.fivebros.backend.common.PageResponse;
+import com.fivebros.backend.common.error.ApiException;
 
 @Service
 @Transactional(readOnly = true)
@@ -57,13 +59,16 @@ public class FleetService {
         return UavProfileResponse.from(profile);
     }
 
-    public PageResponse<DroneResponse> listDrones(String search, DroneStatus status, UUID profileId, int page, int size) {
+    public PageResponse<DroneResponse> listDrones(
+            String search, DroneStatus status, UUID profileId, int page, int size) {
         String term = search.strip().toLowerCase(Locale.ROOT);
         Specification<Drone> filter = (root, query, cb) -> {
-            var predicate = cb.or(cb.gt(cb.locate(cb.lower(root.get("name")), term), 0),
+            var predicate = cb.or(
+                    cb.gt(cb.locate(cb.lower(root.get("name")), term), 0),
                     cb.gt(cb.locate(cb.lower(root.get("serial")), term), 0));
             if (status != null) predicate = cb.and(predicate, cb.equal(root.get("status"), status));
-            if (profileId != null) predicate = cb.and(predicate, cb.equal(root.get("uavProfile").get("id"), profileId));
+            if (profileId != null)
+                predicate = cb.and(predicate, cb.equal(root.get("uavProfile").get("id"), profileId));
             return predicate;
         };
         return PageResponse.from(drones.findAll(filter, paging(page, size)).map(DroneResponse::from));
@@ -86,7 +91,8 @@ public class FleetService {
         Drone drone = findDrone(id);
         checkVersion(drone, request.version());
         if (drone.status == DroneStatus.IN_MISSION || drone.status == DroneStatus.RETIRED) {
-            throw new ApiException(HttpStatus.CONFLICT, "DRONE_NOT_EDITABLE", "An in-mission or retired drone cannot be edited");
+            throw new ApiException(
+                    HttpStatus.CONFLICT, "DRONE_NOT_EDITABLE", "An in-mission or retired drone cannot be edited");
         }
         UavProfile profile = findProfile(request.uavProfileId());
         uniqueSerial(request.serial().strip().toLowerCase(Locale.ROOT), id);
@@ -97,13 +103,15 @@ public class FleetService {
 
     private void validateProfile(UavProfileRequest request) {
         ProfileSpecifications specs = request.specifications();
-        if (specs.minOperatingTemperatureC() != null && specs.maxOperatingTemperatureC() != null
+        if (specs.minOperatingTemperatureC() != null
+                && specs.maxOperatingTemperatureC() != null
                 && specs.minOperatingTemperatureC().compareTo(specs.maxOperatingTemperatureC()) > 0) {
             throw badRequest("INVALID_TEMPERATURE_RANGE", "Minimum operating temperature must not exceed maximum");
         }
         if (specs.maxTakeoffWeightKg() != null) {
             if ((specs.emptyWeightKg() != null && specs.emptyWeightKg().compareTo(specs.maxTakeoffWeightKg()) > 0)
-                    || (specs.maxPayloadKg() != null && specs.maxPayloadKg().compareTo(specs.maxTakeoffWeightKg()) > 0)) {
+                    || (specs.maxPayloadKg() != null
+                            && specs.maxPayloadKg().compareTo(specs.maxTakeoffWeightKg()) > 0)) {
                 throw badRequest("INVALID_WEIGHT_LIMITS", "Empty weight and payload must not exceed MTOW individually");
             }
         }
@@ -112,14 +120,18 @@ public class FleetService {
             try {
                 URI uri = URI.create(sourceUrl);
                 if (!("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme()))
-                        || uri.getHost() == null || uri.getUserInfo() != null) {
+                        || uri.getHost() == null
+                        || uri.getUserInfo() != null) {
                     throw new IllegalArgumentException();
                 }
             } catch (IllegalArgumentException exception) {
                 throw badRequest("INVALID_SOURCE_URL", "sourceUrl must be an absolute HTTP(S) URL without credentials");
             }
         }
-        long distinct = request.capabilities().stream().map(value -> value.toUpperCase(Locale.ROOT)).distinct().count();
+        long distinct = request.capabilities().stream()
+                .map(value -> value.toUpperCase(Locale.ROOT))
+                .distinct()
+                .count();
         if (distinct != request.capabilities().size()) {
             throw badRequest("DUPLICATE_CAPABILITY", "Capability codes must be unique ignoring case");
         }
@@ -127,24 +139,29 @@ public class FleetService {
 
     private void uniqueProfile(String key, UUID id) {
         if (profiles.existsByIdentityKeyAndIdNot(key, id)) {
-            throw new ApiException(HttpStatus.CONFLICT, "UAV_PROFILE_EXISTS", "A profile with this manufacturer and model already exists");
+            throw new ApiException(
+                    HttpStatus.CONFLICT,
+                    "UAV_PROFILE_EXISTS",
+                    "A profile with this manufacturer and model already exists");
         }
     }
 
     private void uniqueSerial(String key, UUID id) {
         if (drones.existsBySerialKeyAndIdNot(key, id)) {
-            throw new ApiException(HttpStatus.CONFLICT, "DRONE_SERIAL_EXISTS", "A drone with this serial already exists");
+            throw new ApiException(
+                    HttpStatus.CONFLICT, "DRONE_SERIAL_EXISTS", "A drone with this serial already exists");
         }
     }
 
     private UavProfile findProfile(UUID id) {
-        return profiles.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
-                "UAV_PROFILE_NOT_FOUND", "UAV Profile was not found"));
+        return profiles.findById(id)
+                .orElseThrow(() ->
+                        new ApiException(HttpStatus.NOT_FOUND, "UAV_PROFILE_NOT_FOUND", "UAV Profile was not found"));
     }
 
     private Drone findDrone(UUID id) {
-        return drones.findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND,
-                "DRONE_NOT_FOUND", "Drone was not found"));
+        return drones.findById(id)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "DRONE_NOT_FOUND", "Drone was not found"));
     }
 
     private void checkVersion(FleetRecord record, Long version) {
@@ -155,7 +172,8 @@ public class FleetService {
     }
 
     private PageRequest paging(int page, int size) {
-        return PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by("id")));
+        return PageRequest.of(
+                page, size, Sort.by(Sort.Direction.DESC, "createdAt").and(Sort.by("id")));
     }
 
     private ApiException badRequest(String code, String message) {

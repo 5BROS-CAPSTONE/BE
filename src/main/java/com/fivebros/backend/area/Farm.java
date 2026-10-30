@@ -2,6 +2,7 @@ package com.fivebros.backend.area;
 
 import java.time.Instant;
 import java.util.UUID;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -11,10 +12,11 @@ import jakarta.persistence.Table;
 public class Farm extends AreaRecord {
     @Column(nullable = false, length = 160)
     private String name;
+
     @Column(length = 2000)
     private String description;
 
-    protected Farm() { }
+    protected Farm() {}
 
     Farm(UUID actor, Instant now, String name, String description) {
         super(actor, now);
@@ -27,6 +29,11 @@ public class Farm extends AreaRecord {
         touch(actor, now);
     }
 
-    public String getName() { return name; }
-    public String getDescription() { return description; }
+    public String getName() {
+        return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
 }

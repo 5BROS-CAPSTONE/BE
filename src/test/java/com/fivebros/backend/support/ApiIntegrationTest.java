@@ -1,13 +1,12 @@
 package com.fivebros.backend.support;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import java.time.Clock;
 import java.util.Map;
 import java.util.Set;
 
-import com.fivebros.backend.account.UserAccount;
-import com.fivebros.backend.account.UserAccountRepository;
-import com.fivebros.backend.auth.AuthSessionRepository;
-import com.fivebros.backend.security.Role;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,8 +18,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.fivebros.backend.account.UserAccount;
+import com.fivebros.backend.account.UserAccountRepository;
+import com.fivebros.backend.auth.AuthSessionRepository;
+import com.fivebros.backend.security.Role;
 
 @SpringBootTest(properties = "spring.config.import=")
 @AutoConfigureMockMvc
@@ -29,12 +30,23 @@ public abstract class ApiIntegrationTest {
 
     protected static final String PASSWORD = "FiveBros-Test-Password!";
 
-    @Autowired protected MockMvc mvc;
-    @Autowired protected ObjectMapper json;
-    @Autowired protected UserAccountRepository users;
-    @Autowired protected AuthSessionRepository sessions;
-    @Autowired protected PasswordEncoder passwords;
-    @Autowired protected Clock clock;
+    @Autowired
+    protected MockMvc mvc;
+
+    @Autowired
+    protected ObjectMapper json;
+
+    @Autowired
+    protected UserAccountRepository users;
+
+    @Autowired
+    protected AuthSessionRepository sessions;
+
+    @Autowired
+    protected PasswordEncoder passwords;
+
+    @Autowired
+    protected Clock clock;
 
     protected UserAccount admin;
     protected UserAccount operator;
@@ -44,10 +56,10 @@ public abstract class ApiIntegrationTest {
         sessions.deleteAllInBatch();
         users.deleteAll();
         String hash = passwords.encode(PASSWORD);
-        admin = users.saveAndFlush(new UserAccount("admin@example.test", "Administrator", hash,
-                Set.of(Role.ADMIN), clock.instant()));
-        operator = users.saveAndFlush(new UserAccount("operator@example.test", "Operator", hash,
-                Set.of(Role.OPERATOR), clock.instant()));
+        admin = users.saveAndFlush(
+                new UserAccount("admin@example.test", "Administrator", hash, Set.of(Role.ADMIN), clock.instant()));
+        operator = users.saveAndFlush(
+                new UserAccount("operator@example.test", "Operator", hash, Set.of(Role.OPERATOR), clock.instant()));
     }
 
     protected String login(UserAccount user) throws Exception {
@@ -58,7 +70,10 @@ public abstract class ApiIntegrationTest {
         String response = mvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(Map.of("email", email, "password", password))))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
         return read(response).get("accessToken").asString();
     }
 
