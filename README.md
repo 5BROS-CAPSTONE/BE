@@ -72,6 +72,20 @@ trong `.env`. Không đưa `.env` hoặc mật khẩu vào Git, ảnh chụp hay
 API mặc định: `http://localhost:8080/api/v1`.
 Trong IntelliJ, mở `pom.xml` dưới dạng Maven project và đặt Project SDK là Java 21.
 
+## Lệnh thường dùng
+
+| Lệnh | Tác dụng |
+|---|---|
+| `./mvnw spring-boot:run` | Chạy server (profile `local`, H2, không cần Postgres) |
+| `./mvnw spotless:apply` | Tự format code theo Palantir Java Format |
+| `./mvnw clean verify` | Build + test + `spotless:check` (CI chạy lệnh này) |
+| `./mvnw test` | Chỉ chạy test |
+
+CI gắn `spotless:check` vào phase `verify`, nên **chạy `spotless:apply` trước khi commit**,
+không thì build đỏ. IntelliJ có plugin *Palantir Java Format* để format tự động khi lưu.
+
+Quy ước dành cho AI coding agent (và cho người) ở [AGENTS.md](AGENTS.md).
+
 ## Thiết lập trên máy khác
 
 Copy `.env.example` thành `.env` rồi điền giá trị, hoặc đặt các biến tương ứng trong

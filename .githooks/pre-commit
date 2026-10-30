@@ -1,0 +1,22 @@
+#!/bin/sh
+# Chặn hai lỗi hay gặp nhất: commit nhầm lên main, và quên chạy spotless nên CI đỏ.
+# Bật một lần cho máy của bạn: git config core.hooksPath .githooks
+# Bỏ qua một lần khi thật sự cần: git commit --no-verify
+
+# symbolic-ref cũng đúng trên nhánh chưa có commit nào, khác với rev-parse.
+branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+if [ "$branch" = "main" ]; then
+  echo "✗ Đang ở nhánh main. Mọi thay đổi phải đi qua nhánh cá nhân rồi mở Pull Request."
+  echo "  Chạy: git switch -c <tên-của-bạn>   rồi commit lại."
+  exit 1
+fi
+
+# Chỉ chạy khi commit có đụng file Java, để commit tài liệu không phải chờ JVM khởi động.
+if git diff --cached --name-only --diff-filter=ACMR | grep -q '\.java$'; then
+  echo "→ ./mvnw spotless:check"
+  if ! ./mvnw --batch-mode --no-transfer-progress -q spotless:check; then
+    echo "✗ Code chưa đúng format. Chạy './mvnw spotless:apply' rồi 'git add -A' và commit lại."
+    exit 1
+  fi
+  echo "✓ format đạt"
+fi
