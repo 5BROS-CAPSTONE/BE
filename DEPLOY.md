@@ -25,7 +25,7 @@ Chỉ nối vào Supabase khi thật sự cần kiểm tra dữ liệu thật, v
 
 | Biến | Giá trị | Ghi chú |
 | --- | --- | --- |
-| `spring.profiles.active` | `supabase` | |
+| `SPRING_PROFILES_ACTIVE` | `supabase` | **Phải viết hoa, gạch dưới.** Xem lưu ý dưới bảng |
 | `SUPABASE_DB_URL` | `jdbc:postgresql://...pooler.supabase.com:5432/postgres?sslmode=require` | Session pooler, **không** kèm mật khẩu |
 | `SUPABASE_DB_USERNAME` | `postgres.<project-ref>` | |
 | `SUPABASE_DB_PASSWORD` | mật khẩu database | |
@@ -36,11 +36,18 @@ Chỉ nối vào Supabase khi thật sự cần kiểm tra dữ liệu thật, v
 | `BOOTSTRAP_ADMIN_EMAIL` | email admin | Không dùng tới khi biến trên là `false` |
 | `BOOTSTRAP_ADMIN_PASSWORD` | mật khẩu mạnh | Không dùng tới khi biến trên là `false` |
 | `BOOTSTRAP_ADMIN_NAME` | `5BROS Administrator` | |
-| `CORS_ALLOWED_ORIGINS` | domain FE trên Vercel | Nhiều domain thì ngăn bằng dấu phẩy |
+| `CORS_ALLOWED_ORIGINS` | `https://frontendcapstone-eight.vercel.app,https://frontendcapstone-*.vercel.app,http://localhost:5173` | Ngăn bằng dấu phẩy. Chấp nhận `*` |
 | `DB_POOL_SIZE` | `5` | Supabase bản free giới hạn số kết nối |
 | `API_DOCS_ENABLED` | `true` | Phải bật vì healthcheck gọi `/v3/api-docs` |
 
 Không đặt `SERVER_PORT`. Railway tự tiêm `PORT` và `application.yml` đã ưu tiên biến đó.
+
+**Tên biến môi trường phải viết hoa và dùng gạch dưới.** Trong file `.env` thì
+`spring.profiles.active=supabase` chạy đúng, vì Spring đọc file đó như file properties.
+Nhưng khi đặt làm biến môi trường thật thì tên có dấu chấm không phải định danh hợp lệ,
+nhiều shell loại nó ra, và app sẽ im lặng rơi về profile mặc định `local` rồi chết vì
+không ghi được file H2 trong container. Dùng `SPRING_PROFILES_ACTIVE`. Spring tự ánh xạ
+`SPRING_PROFILES_ACTIVE` sang `spring.profiles.active`.
 
 Sinh khoá JWT:
 
@@ -91,4 +98,18 @@ sửa file migration đã chạy, chỉ thêm file mới.
 Phải dùng **Session pooler** cổng `5432`.
 
 **FE gọi API bị chặn CORS** — `CORS_ALLOWED_ORIGINS` thiếu domain Vercel.
-Ghi đủ cả domain production lẫn domain preview nếu cần.
+Vercel sinh một domain preview mới cho mỗi pull request, nên khai báo thêm dạng mẫu
+`https://frontendcapstone-*.vercel.app`.
+
+Lưu ý: Spring đổi `*` thành `.*`, tức là nó **vượt qua cả dấu chấm**. Mẫu trên khớp luôn
+`https://frontendcapstone-bat-ky-ai.vercel.app`, mà `vercel.app` là tên miền dùng chung nên
+ai cũng tạo được project tên như vậy. Muốn chặt hơn thì gắn thêm phần cố định của tài khoản
+Vercel: `https://frontendcapstone-*-<ten-tai-khoan>-projects.vercel.app`.
+
+Rủi ro thực tế thấp vì `setAllowCredentials(false)` — trình duyệt không gửi cookie kèm, và
+token nằm trong bộ nhớ trang nên web lạ không đọc được. Đây là chuyện nới rộng hơn mức cần,
+không phải lỗ hổng chiếm tài khoản.
+
+Origin **không bao giờ chứa đường dẫn**: trang `https://x.vn/admin` gửi `Origin: https://x.vn`.
+Nên đừng thêm `/**` vào cuối, thêm vào là chặn sạch. Thêm site mới thì thêm một domain nữa,
+ngăn bằng dấu phẩy. Và `https://*.x.vn` không khớp `https://x.vn` trần — muốn cả hai thì ghi cả hai.
