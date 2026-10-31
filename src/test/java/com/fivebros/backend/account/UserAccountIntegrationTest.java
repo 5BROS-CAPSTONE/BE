@@ -119,7 +119,7 @@ class UserAccountIntegrationTest extends ApiIntegrationTest {
         String operatorToken = login(operator);
         mvc.perform(get("/api/v1/users").header("Authorization", bearer(operatorToken)))
                 .andExpect(status().isForbidden());
-        assignRoles(adminToken, operator.getId(), Set.of("ADMIN", "OPERATOR"));
+        assignRoles(adminToken, operator.getId(), Set.of("ADMIN"));
         mvc.perform(get("/api/v1/users").header("Authorization", bearer(operatorToken)))
                 .andExpect(status().isOk());
         assignRoles(adminToken, operator.getId(), Set.of("OPERATOR"));
