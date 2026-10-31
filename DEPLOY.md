@@ -92,5 +92,17 @@ Phải dùng **Session pooler** cổng `5432`.
 
 **FE gọi API bị chặn CORS** — `CORS_ALLOWED_ORIGINS` thiếu domain Vercel.
 Vercel sinh một domain preview mới cho mỗi pull request, nên khai báo thêm dạng mẫu
-`https://frontendcapstone-*.vercel.app`. Dấu `*` chỉ thay cho một đoạn, không vượt qua
-dấu chấm, nên `...vercel.app.evil.example` vẫn bị chặn.
+`https://frontendcapstone-*.vercel.app`.
+
+Lưu ý: Spring đổi `*` thành `.*`, tức là nó **vượt qua cả dấu chấm**. Mẫu trên khớp luôn
+`https://frontendcapstone-bat-ky-ai.vercel.app`, mà `vercel.app` là tên miền dùng chung nên
+ai cũng tạo được project tên như vậy. Muốn chặt hơn thì gắn thêm phần cố định của tài khoản
+Vercel: `https://frontendcapstone-*-<ten-tai-khoan>-projects.vercel.app`.
+
+Rủi ro thực tế thấp vì `setAllowCredentials(false)` — trình duyệt không gửi cookie kèm, và
+token nằm trong bộ nhớ trang nên web lạ không đọc được. Đây là chuyện nới rộng hơn mức cần,
+không phải lỗ hổng chiếm tài khoản.
+
+Origin **không bao giờ chứa đường dẫn**: trang `https://x.vn/admin` gửi `Origin: https://x.vn`.
+Nên đừng thêm `/**` vào cuối, thêm vào là chặn sạch. Thêm site mới thì thêm một domain nữa,
+ngăn bằng dấu phẩy. Và `https://*.x.vn` không khớp `https://x.vn` trần — muốn cả hai thì ghi cả hai.
