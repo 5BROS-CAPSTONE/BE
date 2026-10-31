@@ -36,7 +36,7 @@ Chỉ nối vào Supabase khi thật sự cần kiểm tra dữ liệu thật, v
 | `BOOTSTRAP_ADMIN_EMAIL` | email admin | Không dùng tới khi biến trên là `false` |
 | `BOOTSTRAP_ADMIN_PASSWORD` | mật khẩu mạnh | Không dùng tới khi biến trên là `false` |
 | `BOOTSTRAP_ADMIN_NAME` | `5BROS Administrator` | |
-| `CORS_ALLOWED_ORIGINS` | domain FE trên Vercel | Nhiều domain thì ngăn bằng dấu phẩy |
+| `CORS_ALLOWED_ORIGINS` | `https://frontendcapstone-eight.vercel.app,https://frontendcapstone-*.vercel.app,http://localhost:5173` | Ngăn bằng dấu phẩy. Chấp nhận `*` |
 | `DB_POOL_SIZE` | `5` | Supabase bản free giới hạn số kết nối |
 | `API_DOCS_ENABLED` | `true` | Phải bật vì healthcheck gọi `/v3/api-docs` |
 
@@ -91,4 +91,6 @@ sửa file migration đã chạy, chỉ thêm file mới.
 Phải dùng **Session pooler** cổng `5432`.
 
 **FE gọi API bị chặn CORS** — `CORS_ALLOWED_ORIGINS` thiếu domain Vercel.
-Ghi đủ cả domain production lẫn domain preview nếu cần.
+Vercel sinh một domain preview mới cho mỗi pull request, nên khai báo thêm dạng mẫu
+`https://frontendcapstone-*.vercel.app`. Dấu `*` chỉ thay cho một đoạn, không vượt qua
+dấu chấm, nên `...vercel.app.evil.example` vẫn bị chặn.

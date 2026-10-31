@@ -74,7 +74,10 @@ public class SecurityConfiguration {
     @Bean
     CorsConfigurationSource corsConfigurationSource(CorsProperties properties) {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(properties.allowedOrigins());
+        // setAllowedOriginPatterns thay cho setAllowedOrigins để nhận cả domain preview
+        // Vercel sinh ra cho mỗi pull request. Chuỗi không có "*" vẫn khớp chính xác
+        // như cũ, nên cấu hình hiện tại không đổi nghĩa.
+        configuration.setAllowedOriginPatterns(properties.allowedOrigins());
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
         configuration.setExposedHeaders(List.of("Location"));
