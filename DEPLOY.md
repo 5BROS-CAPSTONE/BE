@@ -25,7 +25,7 @@ Chỉ nối vào Supabase khi thật sự cần kiểm tra dữ liệu thật, v
 
 | Biến | Giá trị | Ghi chú |
 | --- | --- | --- |
-| `spring.profiles.active` | `supabase` | |
+| `SPRING_PROFILES_ACTIVE` | `supabase` | **Phải viết hoa, gạch dưới.** Xem lưu ý dưới bảng |
 | `SUPABASE_DB_URL` | `jdbc:postgresql://...pooler.supabase.com:5432/postgres?sslmode=require` | Session pooler, **không** kèm mật khẩu |
 | `SUPABASE_DB_USERNAME` | `postgres.<project-ref>` | |
 | `SUPABASE_DB_PASSWORD` | mật khẩu database | |
@@ -41,6 +41,13 @@ Chỉ nối vào Supabase khi thật sự cần kiểm tra dữ liệu thật, v
 | `API_DOCS_ENABLED` | `true` | Phải bật vì healthcheck gọi `/v3/api-docs` |
 
 Không đặt `SERVER_PORT`. Railway tự tiêm `PORT` và `application.yml` đã ưu tiên biến đó.
+
+**Tên biến môi trường phải viết hoa và dùng gạch dưới.** Trong file `.env` thì
+`spring.profiles.active=supabase` chạy đúng, vì Spring đọc file đó như file properties.
+Nhưng khi đặt làm biến môi trường thật thì tên có dấu chấm không phải định danh hợp lệ,
+nhiều shell loại nó ra, và app sẽ im lặng rơi về profile mặc định `local` rồi chết vì
+không ghi được file H2 trong container. Dùng `SPRING_PROFILES_ACTIVE`. Spring tự ánh xạ
+`SPRING_PROFILES_ACTIVE` sang `spring.profiles.active`.
 
 Sinh khoá JWT:
 
