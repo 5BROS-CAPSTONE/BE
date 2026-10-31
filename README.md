@@ -85,6 +85,7 @@ CI gắn `spotless:check` vào phase `verify`, nên **chạy `spotless:apply` tr
 không thì build đỏ. IntelliJ có plugin *Palantir Java Format* để format tự động khi lưu.
 
 Quy ước dành cho AI coding agent (và cho người) ở [AGENTS.md](AGENTS.md).
+Cách deploy lên Railway và danh sách biến môi trường production ở [DEPLOY.md](DEPLOY.md).
 
 ## Thiết lập trên máy khác
 

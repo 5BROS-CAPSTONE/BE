@@ -1,0 +1,12 @@
+# Giữ context build nhỏ và tuyệt đối không để secret lọt vào image.
+.env
+.env.*
+!.env.example
+.local-data/
+target/
+.git/
+.github/
+.idea/
+.githooks/
+*.md
+http-client.private.env.json
