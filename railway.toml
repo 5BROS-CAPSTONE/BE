@@ -1,0 +1,17 @@
+# Cấu hình deploy Railway. Biến môi trường KHÔNG đặt ở đây —
+# đặt trong tab Variables của Railway để không lọt vào git.
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Railway coi service là "khoẻ" khi đường dẫn này trả 2xx.
+# Dùng /v3/api-docs vì nó permitAll trong SecurityConfiguration
+# và không cần thêm dependency actuator.
+healthcheckPath = "/v3/api-docs"
+healthcheckTimeout = 120
+
+# Lỗi lúc khởi động thường do thiếu biến môi trường, thử lại cũng vô ích.
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

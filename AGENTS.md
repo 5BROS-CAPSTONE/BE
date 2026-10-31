@@ -31,6 +31,8 @@ Nó là lưới an toàn, không thay cho việc tự chạy `verify` ở trên.
 - **Không sửa trực tiếp trên `main`.** Làm trên nhánh mang tên thành viên (`phat`, `duy`). `main` có ruleset chặn push thẳng.
 - **Không commit `.env`**, mật khẩu, khoá JWT, chuỗi kết nối Supabase, hay dán chúng vào code, test, ảnh chụp, file `.http`. Cấu hình mới thì thêm vào `.env.example` với **giá trị trống**.
 - **Không trả entity thẳng từ controller.** Luôn qua DTO — entity chứa password hash.
+- **Không chạy code ở máy khi đang nối Supabase.** Supabase của nhóm giờ là **production**.
+  Lập trình thì dùng profile `local` (H2 trên máy). Chỉ nối Supabase khi cần xem dữ liệu thật, và chỉ đọc.
 - **Không sửa file migration Flyway đã chạy.** Đổi schema thì **thêm file migration mới**; sửa file cũ làm hỏng checksum và vỡ database của cả nhóm.
 - **Không đổi `ddl-auto`.** Đang là `validate` và phải giữ nguyên; schema do Flyway quản.
 - **Không tự nâng version Spring Boot hay dependency khác** khi không được yêu cầu. Dependabot đã lo.
@@ -86,5 +88,5 @@ Rồi mở Pull Request vào `main`.
 
 - Cần **Java 21**. Không cần cài PostgreSQL hay Docker để chạy local.
 - Profile mặc định là `local`, dùng H2 file `./.local-data/fivebros` ở chế độ PostgreSQL. Chạy: `./mvnw spring-boot:run`.
-- Muốn nối Supabase thật thì copy `.env.example` thành `.env`, điền `SUPABASE_DB_PASSWORD` và `AUTH_JWT_SECRET`, đặt `spring.profiles.active=supabase`.
+- Supabase của nhóm là **production**, không phải sân tập. Cách deploy ở [DEPLOY.md](DEPLOY.md).
 - API mặc định ở `http://localhost:8080/api/v1`, Swagger UI ở `/swagger-ui.html`.

@@ -25,7 +25,8 @@ spring:
       enabled: true
 
 server:
-  port: ${SERVER_PORT:8080}
+  # Railway tiêm sẵn biến PORT; SERVER_PORT dành cho máy local.
+  port: ${PORT:${SERVER_PORT:8080}}
   error:
     include-message: never
     include-stacktrace: never
