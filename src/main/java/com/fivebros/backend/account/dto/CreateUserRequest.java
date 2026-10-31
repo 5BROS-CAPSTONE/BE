@@ -4,7 +4,6 @@ import java.util.Set;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -32,7 +31,12 @@ public record CreateUserRequest(
         @ValidPassword
         String password,
 
-        @Schema(example = "[\"MANAGER\"]") @NotEmpty Set<@NotNull Role> roles) {
+        @Schema(
+                example = "[\"MANAGER\"]",
+                description = "Đúng một role. Xem BPMN S5 - Người dùng & Phân quyền / Phân quyền.")
+        @NotNull
+        @Size(min = 1, max = 1, message = "Tài khoản phải có đúng một vai trò")
+        Set<@NotNull Role> roles) {
     @Override
     public String toString() {
         return "CreateUserRequest[credentials=REDACTED]";

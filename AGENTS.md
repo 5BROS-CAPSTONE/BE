@@ -31,8 +31,9 @@ Nó là lưới an toàn, không thay cho việc tự chạy `verify` ở trên.
 - **Không sửa trực tiếp trên `main`.** Làm trên nhánh mang tên thành viên (`phat`, `duy`). `main` có ruleset chặn push thẳng.
 - **Không commit `.env`**, mật khẩu, khoá JWT, chuỗi kết nối Supabase, hay dán chúng vào code, test, ảnh chụp, file `.http`. Cấu hình mới thì thêm vào `.env.example` với **giá trị trống**.
 - **Không trả entity thẳng từ controller.** Luôn qua DTO — entity chứa password hash.
-- **Không chạy code ở máy khi đang nối Supabase.** Supabase của nhóm giờ là **production**.
-  Lập trình thì dùng profile `local` (H2 trên máy). Chỉ nối Supabase khi cần xem dữ liệu thật, và chỉ đọc.
+- **Nhóm chỉ có một database: Supabase.** Backend ở máy chạy profile `supabase`, nối thẳng vào
+  database thật, nên mọi thao tác thêm/sửa/xoá là thật — cân nhắc trước khi gõ. Muốn thử nghiệm thoải
+  mái thì đổi tạm sang profile `local` (H2 trên máy), xong nhớ đổi lại.
 - **Không sửa file migration Flyway đã chạy.** Đổi schema thì **thêm file migration mới**; sửa file cũ làm hỏng checksum và vỡ database của cả nhóm.
 - **Không đổi `ddl-auto`.** Đang là `validate` và phải giữ nguyên; schema do Flyway quản.
 - **Không tự nâng version Spring Boot hay dependency khác** khi không được yêu cầu. Dependabot đã lo.
